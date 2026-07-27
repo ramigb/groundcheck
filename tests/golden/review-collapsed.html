@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>groundcheck · main..fixture/wishlist — review slice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0D1321;
+    --panel:#121A2B;
+    --panel2:#172137;
+    --grid:#1D2A46;
+    --line:#2A3856;
+    --paper:#E9E6DC;
+    --dim:#8A94AC;
+    --faint:#5B678A;
+    --added:#63C68F;
+    --modified:#E5B04B;
+    --deleted:#E06552;
+    --consumed:#5B8DEF;
+    --ring:#E06552;
+    --context:#4E5F82;
+    --violet:#A78BDA;
+    --mono:'Spline Sans Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:'Instrument Sans',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:13px;overflow:hidden}
+
+  /* ── shell ─────────────────────────────────────────────────────────────*/
+  .shell{
+    display:grid;height:100vh;
+    grid-template-columns:230px minmax(0,1fr) 400px;
+    grid-template-rows:56px minmax(0,1fr);
+  }
+  .sidebar{grid-row:1/3;grid-column:1;border-right:1px solid var(--grid);display:flex;flex-direction:column;overflow-y:auto}
+  .topbar{grid-row:1;grid-column:2/4;border-bottom:1px solid var(--grid);display:flex;align-items:center;gap:9px;padding:0 14px;overflow-x:auto}
+  .center{grid-row:2;grid-column:2;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:14px;min-width:0}
+  .rightpanel{grid-row:2;grid-column:3;border-left:1px solid var(--grid);background:var(--panel);overflow-y:auto;display:flex;flex-direction:column}
+
+  /* ── sidebar ───────────────────────────────────────────────────────────*/
+  .brand{
+    height:56px;display:flex;align-items:center;gap:9px;padding:0 16px;
+    border-bottom:1px solid var(--grid);font-weight:600;letter-spacing:.03em;font-size:15px;flex:none;
+  }
+  .brand .mark{
+    width:20px;height:20px;border-radius:50%;border:2px solid var(--modified);flex:none;
+    display:grid;place-items:center;
+  }
+  .brand .mark::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--modified)}
+  .side-sec{padding:14px 12px 4px}
+  .side-sec.tight{padding-top:8px}
+  .side-head{
+    display:flex;align-items:center;justify-content:space-between;
+    font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);
+    padding:0 4px 8px;
+  }
+  .side-head .link{all:unset;cursor:pointer;font-size:10px;letter-spacing:.04em;text-transform:none;color:var(--faint)}
+  .side-head .link:hover,.side-head .link:focus-visible{color:var(--paper);text-decoration:underline}
+  .group-label{font-size:11px;color:var(--dim);padding:8px 4px 6px}
+  nav{display:flex;flex-direction:column;gap:2px;padding:8px}
+  .nav-item{
+    all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;
+    padding:9px 10px;border-radius:8px;font-family:var(--mono);font-size:12.5px;color:var(--dim);
+  }
+  .nav-item .ic{flex:none;opacity:.8}
+  .nav-item:hover{background:var(--panel);color:var(--paper)}
+  .nav-item.active{background:var(--panel2);color:var(--paper)}
+  .nav-item:focus-visible{outline:1px solid var(--paper);outline-offset:-1px}
+  .check{
+    display:flex;align-items:center;gap:9px;padding:5px 4px;cursor:pointer;
+    font-size:12px;color:#C9CDD9;
+  }
+  .check input{position:absolute;opacity:0;width:0;height:0}
+  .check .box{
+    width:14px;height:14px;border-radius:3px;border:1.4px solid var(--faint);flex:none;
+    display:grid;place-items:center;
+  }
+  .check .box::after{content:"";width:7px;height:4px;border-left:1.6px solid var(--ink);border-bottom:1.6px solid var(--ink);transform:rotate(-45deg) translateY(-1px);opacity:0}
+  .check input:checked+.box{background:var(--dim);border-color:var(--dim)}
+  .check input:checked+.box::after{opacity:1}
+  .check.added input:checked+.box{background:var(--added);border-color:var(--added)}
+  .check.modified input:checked+.box{background:var(--modified);border-color:var(--modified)}
+  .check.deleted input:checked+.box{background:var(--deleted);border-color:var(--deleted)}
+  .check.blast input:checked+.box{background:var(--consumed);border-color:var(--consumed)}
+  .check.orphan input:checked+.box{background:var(--violet);border-color:var(--violet)}
+  .check input:focus-visible+.box{outline:1px solid var(--paper);outline-offset:2px}
+  .check.empty{color:var(--faint);cursor:default}
+  .check.empty .box{opacity:.4}
+  .switch{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 4px;cursor:pointer;font-size:12px;color:#C9CDD9}
+  .switch input{position:absolute;opacity:0;width:0;height:0}
+  .switch .track{width:32px;height:17px;border-radius:9px;background:var(--grid);flex:none;position:relative;transition:background .15s}
+  .switch .track::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:var(--faint);transition:transform .15s,background .15s}
+  .switch input:checked+.track{background:rgba(99,198,143,.3)}
+  .switch input:checked+.track::after{transform:translateX(15px);background:var(--added)}
+  .switch input:focus-visible+.track{outline:1px solid var(--paper);outline-offset:2px}
+  .side-foot{margin-top:auto;padding:12px}
+  .save-view{
+    all:unset;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;padding:10px;border:1px solid var(--grid);border-radius:8px;
+    font-family:var(--mono);font-size:12px;color:var(--dim);
+  }
+  .save-view:hover,.save-view:focus-visible{border-color:var(--faint);color:var(--paper)}
+  .save-view.saved{border-color:var(--added);color:var(--added)}
+
+  /* ── topbar ────────────────────────────────────────────────────────────*/
+  .crumbs{
+    display:flex;align-items:center;gap:8px;flex:none;
+    border:1px solid var(--grid);border-radius:8px;padding:7px 12px;
+  }
+  .crumbs .crumb{font-size:12px;color:#C9CDD9;white-space:nowrap}
+  .crumbs .sep{color:var(--faint)}
+  .state{font-size:9.5px;font-weight:600;letter-spacing:.05em;border-radius:4px;padding:2px 7px}
+  .state.open{background:rgba(99,198,143,.16);color:var(--added)}
+  .state.merged{background:rgba(167,139,218,.16);color:var(--violet)}
+  .state.closed{background:rgba(138,148,172,.18);color:var(--dim)}
+  .chip-t{
+    font-size:11px;color:var(--dim);border:1px solid var(--grid);border-radius:8px;
+    padding:7px 11px;white-space:nowrap;flex:none;
+  }
+  .chip-t .wt{color:var(--modified);font-weight:600}
+  .metric{
+    border:1px solid var(--grid);border-radius:8px;padding:5px 12px;flex:none;
+    display:flex;flex-direction:column;line-height:1.25;
+  }
+  .metric.warn{border-color:var(--deleted)}
+  .mlabel{font-size:9.5px;color:var(--faint);white-space:nowrap}
+  .mval{font-size:13px;color:var(--paper);font-weight:500}
+  .mval.add{color:var(--added)} .mval.del{color:var(--deleted)}
+  .topbar .spacer{flex:1;min-width:8px}
+  .search-wrap{display:flex;align-items:center;gap:7px;border:1px solid transparent;border-radius:8px;padding:6px 9px;flex:none}
+  .search-wrap:focus-within{border-color:var(--grid);background:var(--panel)}
+  .search-wrap .ic{color:var(--dim);flex:none}
+  #search{
+    all:unset;width:0;font-family:var(--mono);font-size:12px;color:var(--paper);
+    transition:width .18s;
+  }
+  .search-wrap:focus-within #search,#search:not(:placeholder-shown){width:150px}
+  #search::placeholder{color:var(--faint)}
+
+  /* ── cards and views ───────────────────────────────────────────────────*/
+  .card{background:var(--panel);border:1px solid var(--grid);border-radius:10px}
+  /* flex:none on the cards: min-height:0 let the graph card shrink below its own
+     canvas at narrow widths and the nodes drew over the criteria table. */
+  .center>.card{display:none;flex-direction:column;flex:none}
+  .shell[data-view="graph"] #card-graph{display:flex;flex:1 1 auto;min-height:490px}
+  .shell[data-view="graph"] #card-criteria{display:flex}
+  .shell[data-view="criteria"] #card-criteria{display:flex}
+  .shell[data-view="overview"] #card-overview{display:flex}
+  .shell[data-view="files"] #card-files{display:flex}
+  .shell[data-view="flags"] #card-flags{display:flex}
+  .card-head{display:flex;align-items:flex-start;gap:12px;padding:14px 16px}
+  .card-head h1{font-size:16px;font-weight:600;letter-spacing:.01em}
+  .card-head h2{font-size:13.5px;font-weight:600}
+  .card-head .sub{font-size:11px;color:var(--faint);margin-top:3px;font-family:var(--sans)}
+  .card-head .grow{flex:1;min-width:0}
+  .toolbar{display:flex;align-items:center;gap:7px;flex:none}
+  .tbtn{
+    all:unset;cursor:pointer;border:1px solid var(--grid);border-radius:7px;
+    padding:7px 12px;font-family:var(--mono);font-size:11.5px;color:#C9CDD9;
+    display:flex;align-items:center;gap:6px;
+  }
+  .tbtn:hover,.tbtn:focus-visible{border-color:var(--faint);background:var(--panel2)}
+  .tbtn.ico{padding:7px 9px;color:var(--dim)}
+  #zoom-level{
+    background:var(--panel);color:#C9CDD9;border:1px solid var(--grid);border-radius:7px;
+    padding:7px 8px;font-family:var(--mono);font-size:11.5px;
+  }
+  #zoom-level:focus-visible{outline:1px solid var(--paper)}
+
+  /* ── canvas ────────────────────────────────────────────────────────────*/
+  /* overflow:hidden clips the canvas to its card — without it a pan pushes nodes
+     out over the criteria table, and at narrow widths the auto-height row lets
+     the whole graph spill. */
+  .canvas-wrap{position:relative;flex:1;min-height:430px;overflow:hidden;border-radius:0 0 10px 10px;border-top:1px solid var(--grid)}
+  svg#canvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+  svg#canvas.panning{cursor:grabbing}
+  svg#canvas.no-rings #rings{display:none}
+  .edge{stroke:var(--line);fill:none;transition:stroke .15s,opacity .15s}
+  .edge.type{stroke-dasharray:6 5;stroke-width:1.5}
+  .edge.renders{stroke-width:2.2}
+  .edge.calls{stroke-width:1.5}
+  .edge.token{stroke-dasharray:2 4;stroke-width:1.5}
+  .edge.imports{stroke-width:1;opacity:.55}
+  .edge.hot{stroke:var(--paper);opacity:1}
+  .edge.hot.type{stroke:var(--consumed)}
+  .edge.mute{opacity:.14}
+  .edge.filtered{opacity:.08}
+
+  .node{cursor:pointer;outline:none}
+  .node rect.body{fill:var(--panel2);stroke-width:1.4;transition:filter .15s,opacity .15s}
+  .node text{font-family:var(--mono);pointer-events:none}
+  .node .name{fill:var(--paper);font-size:11.5px;font-weight:500}
+  .node .sub{fill:var(--dim);font-size:9.5px}
+  .node .glyph{font-size:11px;font-weight:600}
+  .node.added rect.body{stroke:var(--added)}
+  .node.added rect.badge{fill:rgba(99,198,143,.16)} .node.added .glyph{fill:var(--added)}
+  .node.modified rect.body{stroke:var(--modified)}
+  .node.modified rect.badge{fill:rgba(229,176,75,.16)} .node.modified .glyph{fill:var(--modified)}
+  .node.deleted rect.body{stroke:var(--deleted);stroke-dasharray:2 3}
+  .node.deleted rect.badge{fill:rgba(224,101,82,.16)} .node.deleted .glyph{fill:var(--deleted)}
+  .node.blast rect.body{stroke:var(--consumed)}
+  .node.blast rect.badge{fill:rgba(91,141,239,.16)} .node.blast .glyph{fill:var(--consumed)}
+  .node.context rect.body{stroke:var(--context)}
+  .node.context rect.badge{fill:rgba(78,95,130,.2)} .node.context .glyph{fill:var(--context)}
+  .node.orphan rect.body{stroke:var(--violet)}
+  .node.faded{opacity:.22}
+  .node.filtered{opacity:.22}
+  .node.selected rect.body{filter:drop-shadow(0 0 7px rgba(233,230,220,.35));stroke-width:2}
+  .node:focus-visible rect.body{stroke:var(--paper);stroke-width:2}
+  .risk-label{fill:var(--faint);font-size:9.5px;font-family:var(--mono)}
+  .orphan-label{fill:var(--violet);font-size:10px;font-family:var(--mono)}
+  .risk-label.filtered,.orphan-label.filtered{opacity:.18}
+
+  .ring{fill:none;stroke:var(--ring);opacity:.16;stroke-dasharray:3 6}
+  @keyframes ringpulse{0%,100%{opacity:.10}50%{opacity:.26}}
+  .ring.r1{animation:ringpulse 4s ease-in-out infinite}
+  .ring.r2{animation:ringpulse 4s ease-in-out 1.3s infinite}
+  .ring.r3{animation:ringpulse 4s ease-in-out 2.6s infinite}
+  @media (prefers-reduced-motion:reduce){.ring{animation:none !important}}
+
+  .legend{
+    position:absolute;left:14px;bottom:12px;
+    background:rgba(13,19,33,.88);border:1px solid var(--grid);border-radius:8px;
+    padding:10px 12px;font-size:10.5px;color:var(--dim);
+    display:grid;grid-template-columns:auto auto;gap:5px 22px;backdrop-filter:blur(3px);
+    /* the layout is model-placed, so a node can land under the legend; never let
+       the overlay swallow that node's click */
+    pointer-events:none;
+  }
+  .legend .k{display:flex;align-items:center;gap:7px;white-space:nowrap}
+  .legend .cap{grid-column:1/3;color:var(--faint);font-size:9.5px;padding-top:2px}
+  .dot{width:9px;height:9px;border-radius:3px;flex:none}
+  .lseg{width:22px;height:0;border-top:2px solid var(--faint);flex:none}
+  .lseg.dash{border-top-style:dashed}
+  .lseg.dots{border-top-style:dotted}
+  .lseg.thin{border-top-width:1px;opacity:.6}
+
+  /* ── tables ────────────────────────────────────────────────────────────*/
+  table{width:100%;border-collapse:collapse;font-size:11.5px}
+  thead th{
+    text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--faint);font-weight:500;padding:8px 10px;border-top:1px solid var(--grid);
+  }
+  tbody td{padding:8px 10px;border-top:1px solid var(--grid);color:#C9CDD9;vertical-align:top}
+  tbody tr{cursor:pointer}
+  tbody tr:hover{background:var(--panel2)}
+  tbody tr.active{background:var(--panel2)}
+  tbody tr:focus-visible{outline:1px solid var(--paper);outline-offset:-1px}
+  tbody tr.filtered{opacity:.3}
+  tbody tr.muted{cursor:default;color:var(--faint)}
+  .c-id{color:var(--dim);white-space:nowrap;width:64px}
+  .c-status{white-space:nowrap;width:90px}
+  .crit-row.ok .c-status{color:var(--added)}
+  .crit-row.miss .c-status{color:var(--deleted)}
+  .crit-row.orph .c-status{color:var(--violet)}
+  .c-desc .mark{margin-right:8px;font-weight:600}
+  .crit-row.ok .mark{color:var(--added)}
+  .crit-row.miss .mark{color:var(--deleted)}
+  .crit-row.orph .mark{color:var(--violet)}
+  .f-path{color:var(--paper)}
+  .f-sym{color:var(--dim)}
+  .f-kind,.f-spans{white-space:nowrap;color:var(--dim)}
+  .f-stat{white-space:nowrap}
+  .f-stat .add{color:var(--added)} .f-stat .del{color:var(--deleted)}
+  .table-wrap{overflow-x:auto}
+  #card-criteria.collapsed .table-wrap{display:none}
+  .shell[data-view="criteria"] #card-criteria .table-wrap{display:block}
+  .progress{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--dim);flex:none}
+  .progress .track{stroke:var(--grid)}
+  .progress .arc{stroke:var(--added)}
+  .progress b{color:var(--paper);font-weight:500}
+
+  /* ── right panel ───────────────────────────────────────────────────────*/
+  .tabs{display:flex;gap:2px;padding:0 8px;border-bottom:1px solid var(--grid);flex:none}
+  .tab{
+    all:unset;cursor:pointer;padding:16px 14px 13px;font-family:var(--mono);font-size:12.5px;
+    color:var(--dim);border-bottom:2px solid transparent;display:flex;align-items:center;gap:7px;
+  }
+  .tab:hover{color:var(--paper)}
+  .tab.active{color:var(--paper);border-bottom-color:var(--added)}
+  .tab:focus-visible{outline:1px solid var(--paper);outline-offset:-3px}
+  .tab .count{font-size:10px;background:var(--panel2);border-radius:4px;padding:1px 6px;color:var(--dim)}
+  .tab-body{display:none;padding:14px;flex-direction:column;gap:14px;overflow-y:auto}
+  .rightpanel[data-tab="summary"] #tab-summary{display:flex}
+  .rightpanel[data-tab="diff"] #tab-diff-body{display:flex}
+  .rightpanel[data-tab="notes"] #tab-notes-body{display:flex}
+  .rightpanel .card{padding:14px 15px}
+  .rightpanel .card>h2{font-size:12.5px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .rightpanel .card>h2 .count{font-size:10px;background:var(--panel2);border-radius:4px;padding:1px 6px;color:var(--dim);font-weight:400}
+  .rightpanel .card-head{padding:0 0 10px;flex-wrap:wrap;gap:8px;align-items:center}
+  h3{font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:14px 0 8px}
+  .lede,.why{font-family:var(--sans);font-size:13px;line-height:1.55;color:#C9CDD9}
+  .lede code,.why code,.loc code{font-family:var(--mono);font-size:.92em;background:var(--panel2);border-radius:4px;padding:1px 5px;color:var(--paper);word-break:break-all}
+  .file-head{display:flex;align-items:center;gap:9px;margin-bottom:5px;flex-wrap:wrap}
+  .file-head .path{font-size:13.5px;font-weight:600}
+  .file-head .tag{font-size:10.5px;color:var(--dim);border:1px solid var(--grid);border-radius:4px;padding:2px 7px}
+  .loc{font-size:10.5px;color:var(--faint);margin-bottom:12px;word-break:break-all}
+  .loc .add{color:var(--added)} .loc .del{color:var(--deleted)}
+  .pill{font-size:9.5px;border-radius:4px;padding:2px 7px;letter-spacing:.04em;font-weight:600;white-space:nowrap}
+  .pill.added{background:rgba(99,198,143,.15);color:var(--added)}
+  .pill.modified{background:rgba(229,176,75,.15);color:var(--modified)}
+  .pill.deleted{background:rgba(224,101,82,.15);color:var(--deleted)}
+  .pill.blast{background:rgba(91,141,239,.15);color:var(--consumed)}
+  .pill.context{background:rgba(78,95,130,.25);color:var(--dim)}
+  .pill.orphan{background:rgba(167,139,218,.15);color:var(--violet)}
+  .pill.risk-high{background:rgba(224,101,82,.22);color:#F1937F}
+  .pill.risk-med{background:rgba(229,176,75,.14);color:var(--modified)}
+  .pill.risk-low{background:rgba(78,95,130,.25);color:var(--dim)}
+  .facts{list-style:none;font-size:11.5px;color:#C9CDD9;line-height:1.7}
+  .facts b{color:var(--paper);font-weight:500}
+  .facts .faint{color:var(--faint)}
+  .facts code{color:var(--dim)}
+  .facts.members>li{border-top:1px solid var(--grid);padding:8px 0;line-height:1.5}
+  .facts.members .reviewer-note{margin:8px 0 2px}
+  .facts.members pre.diff{margin:8px 0 4px;font-size:10.5px}
+  pre.diff{
+    background:#0A0F1B;border:1px solid var(--grid);border-radius:8px;
+    padding:10px 0;font-size:11px;line-height:1.7;overflow-x:auto;white-space:pre;
+  }
+  pre.diff .dl{display:block;padding-right:12px}
+  pre.diff .dl i{
+    display:inline-block;width:34px;padding-right:12px;text-align:right;
+    color:var(--faint);font-style:normal;user-select:none;
+  }
+  pre.diff .a{color:var(--added)}
+  pre.diff .d{color:var(--deleted)}
+  pre.diff .c{color:var(--dim)}
+  pre.diff .g{color:var(--faint);font-style:italic}
+  .caption{font-size:9.5px;color:var(--faint);margin-top:6px;line-height:1.5}
+  .empty{font-size:11px;color:var(--faint);font-family:var(--sans)}
+  .dp-path{font-size:10.5px;color:var(--dim);word-break:break-all;flex:1;min-width:0}
+  .dp-stat{font-size:10.5px;white-space:nowrap}
+  .dp-stat .add{color:var(--added)} .dp-stat .del{color:var(--deleted)}
+
+  /* judgment register — model voice, never mixed into computed metadata */
+  .reviewer-note{border-left:2px solid var(--violet);padding-left:12px;margin:0 0 14px}
+  .register-caption{
+    display:block;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--violet);margin-bottom:5px;
+  }
+  .judgment-pills{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    border-left:2px solid var(--violet);padding-left:12px;margin:0 0 12px;
+  }
+  .judgment-pills .register-caption{margin-bottom:0}
+  .note-entry{border-top:1px solid var(--grid);padding-top:10px;margin-top:10px}
+  .note-entry:first-of-type{border-top:none;padding-top:0;margin-top:0}
+  .note-target{
+    all:unset;cursor:pointer;font-family:var(--mono);font-size:10.5px;color:var(--dim);
+    display:block;margin-bottom:6px;
+  }
+  .note-target:hover,.note-target:focus-visible{color:var(--paper);text-decoration:underline}
+
+  .flags{list-style:none;display:flex;flex-direction:column;gap:8px}
+  .flags button{
+    all:unset;display:flex;gap:10px;align-items:baseline;cursor:pointer;
+    border:1px solid var(--grid);border-radius:8px;padding:9px 12px;width:100%;
+    font-family:var(--mono);font-size:11.5px;color:#C9CDD9;line-height:1.45;
+    transition:border-color .15s,background .15s;
+  }
+  .flags button:hover,.flags button:focus-visible{border-color:var(--faint);background:var(--panel2)}
+  .flags .n{color:var(--modified);font-weight:600;flex:none}
+  .flags .n.v{color:var(--violet)}
+  .flags .ftext{min-width:0}
+  .flag-facts{font-size:10px;margin-top:5px;word-break:break-all}
+  .reading-order button{font-size:11px;color:var(--dim)}
+  .back{all:unset;cursor:pointer;font-size:10.5px;color:var(--faint);margin-bottom:12px;display:inline-block;letter-spacing:.04em}
+  .back:hover,.back:focus-visible{color:var(--paper)}
+  .linkbtn{
+    all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-top:12px;
+    border:1px solid var(--grid);border-radius:7px;padding:7px 11px;
+    font-family:var(--mono);font-size:11px;color:var(--dim);
+  }
+  .linkbtn:hover,.linkbtn:focus-visible{border-color:var(--faint);color:var(--paper)}
+  .card-body{padding:0 16px 16px}
+  .card-body>.lede{margin-bottom:14px}
+
+  /* ── responsive: reflow, never a content cut ───────────────────────────*/
+  @media (max-width:1100px){
+    .shell{grid-template-columns:56px minmax(0,1fr) 400px}
+    .brand{padding:0 18px;font-size:0;gap:0}
+    .nav-item span:not(.ic){display:none}
+    .nav-item{justify-content:center;padding:10px 0}
+    .side-sec,.side-foot{display:none}
+    .sidebar.open .side-sec,.sidebar.open .side-foot{display:block}
+  }
+  @media (max-width:900px){
+    body{overflow:auto}
+    .shell{grid-template-columns:56px minmax(0,1fr);grid-template-rows:56px auto auto}
+    .topbar{grid-column:2/3}
+    /* the page scrolls here, not the column — an inner scroller would hide the
+       criteria table below the graph card instead of stacking it */
+    .center{grid-row:2;grid-column:2;overflow:visible}
+    .rightpanel{grid-row:3;grid-column:1/3;border-left:none;border-top:1px solid var(--grid)}
+    svg#canvas{min-height:380px}
+  }
+</style>
+</head>
+<body>
+
+<div class="shell" id="shell" data-view="graph">
+
+  <aside class="sidebar">
+    <div class="brand"><span class="mark" aria-hidden="true"></span>groundcheck</div>
+    <div class="side-head" style="padding:14px 16px 4px">Review</div>
+    <nav aria-label="Review views">
+      <button class="nav-item" data-view="overview"><svg class="ic" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><circle cx="8" cy="8" r="2"/></svg><span>Overview</span></button>
+      <button class="nav-item" data-view="files"><svg class="ic" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2h5l3 3v9H4z"/><path d="M9 2v3h3"/></svg><span>Files</span></button>
+      <button class="nav-item active" data-view="graph" aria-current="page"><svg class="ic" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="4" cy="4" r="1.8"/><circle cx="12" cy="8" r="1.8"/><circle cx="4" cy="12" r="1.8"/><path d="M5.6 4.8 10.4 7.2M5.6 11.2 10.4 8.8"/></svg><span>Graph</span></button>
+      <button class="nav-item" data-view="criteria"><svg class="ic" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><path d="M5.2 8.2 7.2 10.2 11 6"/></svg><span>Acceptance Criteria</span></button>
+      <button class="nav-item" data-view="flags"><svg class="ic" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.6 14.2 13H1.8z"/><path d="M8 6.4v3.2M8 11.2v.6"/></svg><span>Attention Flags</span></button>
+    </nav>
+
+    <div class="side-sec">
+      <div class="side-head">Filters<button class="link" id="clear-filters">Clear all</button></div>
+      <div class="group-label">Status</div>
+      <div role="group" aria-label="Filter by status">
+        <label class="check added"><input type="checkbox" data-status="added" checked><span class="box" aria-hidden="true"></span><span class="lbl">Added</span></label>
+        <label class="check modified"><input type="checkbox" data-status="modified" checked><span class="box" aria-hidden="true"></span><span class="lbl">Modified</span></label>
+        <label class="check deleted empty"><input type="checkbox" data-status="deleted" checked disabled><span class="box" aria-hidden="true"></span><span class="lbl">Deleted</span></label>
+        <label class="check blast"><input type="checkbox" data-status="blast" checked><span class="box" aria-hidden="true"></span><span class="lbl">Consumed (low risk)</span></label>
+        <label class="check orphan"><input type="checkbox" data-status="orphan" checked><span class="box" aria-hidden="true"></span><span class="lbl">Orphan / Unused</span></label>
+      </div>
+      <div class="group-label">Change type</div>
+      <div role="group" aria-label="Filter by change type">
+        <label class="check"><input type="checkbox" data-edge="flow" checked><span class="box" aria-hidden="true"></span><span class="lseg solid" aria-hidden="true"></span><span class="lbl">Renders / Calls</span></label>
+        <label class="check"><input type="checkbox" data-edge="type" checked><span class="box" aria-hidden="true"></span><span class="lseg dash" aria-hidden="true"></span><span class="lbl">Consumes type</span></label>
+        <label class="check"><input type="checkbox" data-edge="token" checked><span class="box" aria-hidden="true"></span><span class="lseg dots" aria-hidden="true"></span><span class="lbl">Uses token</span></label>
+        <label class="check"><input type="checkbox" data-edge="imports" checked><span class="box" aria-hidden="true"></span><span class="lseg thin" aria-hidden="true"></span><span class="lbl">Imports</span></label>
+      </div>
+    </div>
+
+    <div class="side-sec tight">
+      <div class="side-head">Focus</div>
+      <label class="switch"><span>Show context nodes</span><input type="checkbox" id="focus-context" checked><span class="track" aria-hidden="true"></span></label>
+      <label class="switch"><span>Show epicenter rings</span><input type="checkbox" id="focus-rings" checked><span class="track" aria-hidden="true"></span></label>
+    </div>
+
+    <div class="side-foot">
+      <button class="save-view" id="save-view"><svg class="ic" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2.6h8v11l-4-3-4 3z"/></svg>Save view</button>
+    </div>
+  </aside>
+
+  <header class="topbar">
+    <div class="crumbs"><span class="crumb">storefront</span><span class="sep">/</span><span class="crumb">main..fixture/wishlist</span></div>
+    <span class="chip-t">f17c953</span>
+    <div class="metric"><span class="mlabel">Files changed</span><span class="mval" id="m-files">6</span></div>
+      <div class="metric"><span class="mval add" id="m-added">+43</span><span class="mlabel">Additions</span></div>
+      <div class="metric"><span class="mval del" id="m-removed">-2</span><span class="mlabel">Deletions</span></div>
+      <div class="metric" title="nodes drawn on the graph"><span class="mlabel">In graph</span><span class="mval" id="m-nodes">7</span></div>
+      <div class="metric" title="1 component · 1 hook"><span class="mlabel">Not shown</span><span class="mval" id="m-hidden">2</span></div>
+    <span class="spacer"></span>
+    <label class="search-wrap"><svg class="ic" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14"/></svg><input id="search" type="search" placeholder="filter nodes" aria-label="Filter nodes by file or symbol"></label>
+  </header>
+
+  <main class="center">
+
+    <section class="card" id="card-graph">
+      <div class="card-head">
+        <div class="grow">
+          <h1>Dependency Graph</h1>
+          <div class="sub">Visualize how changes in this PR impact your codebase</div>
+        </div>
+        <div class="toolbar">
+          <button class="tbtn" id="fit-view">Fit view</button>
+          <select id="zoom-level" aria-label="Zoom level">
+            <option value="50">50%</option><option value="75">75%</option>
+            <option value="100" selected>100%</option>
+            <option value="150">150%</option><option value="200">200%</option>
+          </select>
+          <button class="tbtn ico" id="zoom-out" aria-label="Zoom out"><svg class="ic" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14M5 7h4"/></svg></button>
+          <button class="tbtn ico" id="zoom-in" aria-label="Zoom in"><svg class="ic" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14M5 7h4M7 5v4"/></svg></button>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <svg id="canvas" viewBox="0 0 1180 620" role="img" aria-label="Dependency slice of main..fixture/wishlist">
+          <defs>
+            <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
+              <circle cx="1.2" cy="1.2" r="1.2" fill="#1A2440"/>
+            </pattern>
+            <marker id="m-dim" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L8,4 L0,8 z" fill="#2A3856"/>
+            </marker>
+            <marker id="m-hot" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L8,4 L0,8 z" fill="#E9E6DC"/>
+            </marker>
+          </defs>
+          <rect x="-2000" y="-2000" width="6000" height="6000" fill="url(#dots)"/>
+          <g id="rings">
+        <circle class="ring r1" cx="440" cy="300" r="78" stroke-width="1.4"></circle>
+        <circle class="ring r2" cx="440" cy="300" r="122" stroke-width="1.4"></circle>
+        <circle class="ring r3" cx="440" cy="300" r="168" stroke-width="1.4"></circle>
+          </g>
+          <g id="edges">
+        <line class="edge calls" data-index="0" data-from="components" data-to="hooks" data-type="calls" data-group="flow" x1="676.89" y1="376" x2="467.27" y2="158.32" marker-end="url(#m-dim)"></line>
+        <line class="edge imports" data-index="1" data-from="components" data-to="lib" data-type="imports" data-group="imports" x1="757.6" y1="376" x2="876.86" y2="326.31" marker-end="url(#m-dim)"></line>
+        <line class="edge token" data-index="2" data-from="components" data-to="styles" data-type="uses-token" data-group="token" x1="700" y1="376" x2="700" y2="230" marker-end="url(#m-dim)"></line>
+        <line class="edge type" data-index="3" data-from="components" data-to="types" data-type="consumes-type" data-group="type" x1="637.6" y1="376" x2="508" y2="326.15" marker-end="url(#m-dim)"></line>
+        <line class="edge type" data-index="4" data-from="hooks" data-to="types" data-type="consumes-type" data-group="type" x1="440" y1="154" x2="440" y2="270" marker-end="url(#m-dim)"></line>
+        <line class="edge type" data-index="5" data-from="lib/api" data-to="types" data-type="consumes-type" data-group="type" x1="232" y1="204" x2="382.55" y2="273.49" marker-end="url(#m-dim)"></line>
+        <line class="edge type" data-index="6" data-from="pages" data-to="types" data-type="consumes-type" data-group="type" x1="232" y1="396" x2="382.55" y2="326.51" marker-end="url(#m-dim)"></line>
+          </g>
+          <g id="labels">
+        <text class="risk-label" data-for="lib/api" x="307.27" y="232.75" text-anchor="middle">risk: high</text>
+        <text class="risk-label" data-for="pages" x="307.27" y="355.26" text-anchor="middle">risk: low</text>
+        <text class="orphan-label" data-for="lib" x="1033" y="304">orphan?</text>
+          </g>
+          <g id="nodes">
+        <g class="node modified" data-id="components" data-status="modified" data-kind="component" data-file="src/components" data-symbol="" data-orphan="0" data-x="700" data-y="400" transform="translate(616,376)" tabindex="0" role="button" aria-label="components, Modified">
+          <rect class="body" width="168" height="48" rx="9"></rect>
+          <rect class="badge" x="10" y="13" width="24" height="22" rx="4"></rect>
+          <text class="glyph" x="22" y="28" text-anchor="middle">+</text>
+          <text class="name" x="44" y="21">components</text>
+          <text class="sub" x="44" y="36">component · 4 symbols</text>
+        </g>
+        <g class="node added" data-id="hooks" data-status="added" data-kind="hook" data-file="src/hooks" data-symbol="" data-orphan="0" data-x="440" data-y="130" transform="translate(356,106)" tabindex="0" role="button" aria-label="hooks, Added">
+          <rect class="body" width="168" height="48" rx="9"></rect>
+          <rect class="badge" x="10" y="13" width="24" height="22" rx="4"></rect>
+          <text class="glyph" x="22" y="28" text-anchor="middle">+</text>
+          <text class="name" x="44" y="21">hooks</text>
+          <text class="sub" x="44" y="36">hook · 1 symbols · new</text>
+        </g>
+        <g class="node modified orphan" data-id="lib" data-status="modified" data-kind="module" data-file="src/lib" data-symbol="" data-orphan="1" data-x="940" data-y="300" transform="translate(856,276)" tabindex="0" role="button" aria-label="lib, Modified, orphan change">
+          <rect class="body" width="168" height="48" rx="9"></rect>
+          <rect class="badge" x="10" y="13" width="24" height="22" rx="4"></rect>
+          <text class="glyph" x="22" y="28" text-anchor="middle">+</text>
+          <text class="name" x="44" y="21">lib</text>
+          <text class="sub" x="44" y="36">module · 1 symbols</text>
+        </g>
+        <g class="node blast" data-id="lib/api" data-status="blast" data-kind="module" data-file="src/lib/api" data-symbol="" data-orphan="0" data-x="180" data-y="180" transform="translate(96,156)" tabindex="0" role="button" aria-label="api, Consumed (low risk)">
+          <rect class="body" width="168" height="48" rx="9"></rect>
+          <rect class="badge" x="10" y="13" width="24" height="22" rx="4"></rect>
+          <text class="glyph" x="22" y="28" text-anchor="middle">+</text>
+          <text class="name" x="44" y="21">api</text>
+          <text class="sub" x="44" y="36">module · 1 symbols</text>
+        </g>
+        <g class="node blast" data-id="pages" data-status="blast" data-kind="component" data-file="src/pages" data-symbol="" data-orphan="0" data-x="180" data-y="420" transform="translate(96,396)" tabindex="0" role="button" aria-label="pages, Consumed (low risk)">
+          <rect class="body" width="168" height="48" rx="9"></rect>
+          <rect class="badge" x="10" y="13" width="24" height="22" rx="4"></rect>
+          <text class="glyph" x="22" y="28" text-anchor="middle">+</text>
+          <text class="name" x="44" y="21">pages</text>
+          <text class="sub" x="44" y="36">component · 1 symbols</text>
+        </g>
+        <g class="node modified" data-id="styles" data-status="modified" data-kind="token" data-file="src/styles" data-symbol="" data-orphan="0" data-x="700" data-y="200" transform="translate(616,176)" tabindex="0" role="button" aria-label="styles, Modified">
+          <rect class="body" width="168" height="48" rx="9"></rect>
+          <rect class="badge" x="10" y="13" width="24" height="22" rx="4"></rect>
+          <text class="glyph" x="22" y="28" text-anchor="middle">+</text>
+          <text class="name" x="44" y="21">styles</text>
+          <text class="sub" x="44" y="36">token · 1 symbols</text>
+        </g>
+        <g class="node modified" data-id="types" data-status="modified" data-kind="type" data-file="src/types" data-symbol="" data-orphan="0" data-x="440" data-y="300" transform="translate(356,276)" tabindex="0" role="button" aria-label="types, Modified">
+          <rect class="body" width="168" height="48" rx="9"></rect>
+          <rect class="badge" x="10" y="13" width="24" height="22" rx="4"></rect>
+          <text class="glyph" x="22" y="28" text-anchor="middle">+</text>
+          <text class="name" x="44" y="21">types</text>
+          <text class="sub" x="44" y="36">type · 1 symbols</text>
+        </g>
+          </g>
+        </svg>
+        <div class="legend" aria-hidden="true">
+          <span class="k"><span class="dot" style="background:var(--added)"></span>Added</span>
+          <span class="k"><span class="lseg"></span>Renders / Calls</span>
+          <span class="k"><span class="dot" style="background:var(--modified)"></span>Modified</span>
+          <span class="k"><span class="lseg dots"></span>Uses token</span>
+          <span class="k"><span class="dot" style="background:var(--consumed)"></span>Consumed (low risk)</span>
+          <span class="k"><span class="lseg thin"></span>Imports</span>
+          <span class="k"><span class="dot" style="background:var(--violet)"></span>Orphan / Unused</span>
+          <span class="k"><span class="lseg dash" style="border-color:var(--consumed)"></span>Consumes type</span>
+          <span class="cap">risk and orphan labels are model judgment</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="card-criteria">
+      <div class="card-head">
+        <div class="grow">
+          <h2>Intent &amp; Acceptance Criteria</h2>
+          <span class="register-caption" style="margin-top:5px">model-matched</span>
+        </div>
+        <span class="progress" role="img" aria-label="2 of 3 criteria passed">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <circle class="track" cx="12" cy="12" r="9" fill="none" stroke-width="2.6"></circle>
+            <circle class="arc" cx="12" cy="12" r="9" fill="none" stroke-width="2.6" stroke-linecap="round"
+              stroke-dasharray="37.7 56.55" transform="rotate(-90 12 12)"></circle>
+          </svg>
+          <b>2 / 3</b>
+        </span>
+        <button class="tbtn" id="crit-collapse"><svg class="ic" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5 8 10.5 12 6.5"/></svg>Collapse</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Description</th><th>Status</th></tr></thead>
+          <tbody>
+          <tr class="crit-row ok" data-id="c1" tabindex="0" role="button" aria-label="criterion c1: Passed">
+            <td class="c-id">c1</td>
+            <td class="c-desc"><span class="mark" aria-hidden="true">✓</span>wishlist state persists across reloads</td>
+            <td class="c-status">Passed</td>
+          </tr>
+          <tr class="crit-row ok" data-id="c2" tabindex="0" role="button" aria-label="criterion c2: Passed">
+            <td class="c-id">c2</td>
+            <td class="c-desc"><span class="mark" aria-hidden="true">✓</span>toggle on every product card</td>
+            <td class="c-status">Passed</td>
+          </tr>
+          <tr class="crit-row miss" data-id="c3" tabindex="0" role="button" aria-label="criterion c3: Failed">
+            <td class="c-id">c3</td>
+            <td class="c-desc"><span class="mark" aria-hidden="true">✗</span>wishlisted items visible in the cart</td>
+            <td class="c-status">Failed</td>
+          </tr>
+          <tr class="crit-row orph" data-id="orphan:lib/format.ts#formatPrice" tabindex="0" role="button" aria-label="orphan change format.ts#formatPrice, unmatched">
+            <td class="c-id">orphan</td>
+            <td class="c-desc"><span class="mark" aria-hidden="true">⚠</span>orphan · format.ts#formatPrice</td>
+            <td class="c-status">Unmatched</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="card-overview">
+      <div class="card-head"><div class="grow"><h2>Slice overview</h2></div></div>
+      <div class="card-body">
+        <p class="lede">Built from <code>main..fixture/wishlist</code> at <code>f17c953</code>. 6 files changed → 7 nodes drawn, 0 changed files listed without graph nodes, 2 context nodes hidden. Blast radius computed from <code>types</code>.</p>
+        <h3>attention flags · 3</h3><span class="register-caption">model judgment</span><ul class="flags">
+          <li><button data-go="node:lib/api"><span class="n">01</span><span class="ftext">lib/api/products.ts — serializeProduct never reads wishlisted; the field will not survive the API boundary even though the type allows it.</span></button></li>
+          <li><button data-go="chip:c3"><span class="n">02</span><span class="ftext">criterion 3 uncovered — no change in this range touches the cart path.</span></button></li>
+          <li><button data-go="node:lib"><span class="n">03</span><span class="ftext">lib/format.ts — formatPrice was rewritten to Intl.NumberFormat; matches no criterion (drive-by change). Approve or revert explicitly.</span></button></li>
+          </ul>
+        <h3>suggested reading order</h3><ul class="flags reading-order">
+          <li><button data-go="node:types"><span class="ftext">types</span></button></li>
+          <li><button data-go="node:lib/api"><span class="ftext">lib/api</span></button></li>
+          <li><button data-go="node:lib/format.ts#formatPrice"><span class="ftext">lib/format.ts#formatPrice</span></button></li>
+          <li><button data-go="node:hooks"><span class="ftext">hooks</span></button></li>
+          <li><button data-go="node:components"><span class="ftext">components</span></button></li>
+          <li><button data-go="node:styles"><span class="ftext">styles</span></button></li>
+          <li><button data-go="node:pages"><span class="ftext">pages</span></button></li>
+          </ul>
+        <p class="caption">Facts (nodes, edges, statuses, spans, ungraphed changed files) come from <code>slice.json</code>; flags, notes, risk and ordering are model judgment from <code>annotations.json</code>. tsconfig: <code>tsconfig.json</code> · slice format <code>0.6.0</code>.</p>
+      </div>
+    </section>
+
+    <section class="card" id="card-files">
+      <div class="card-head"><div class="grow"><h2>Files in this slice</h2><div class="sub">7 nodes drawn · 0 changed files not graphed · 2 context nodes hidden</div></div></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Path</th><th>Kind</th><th>Status</th><th>Diff</th><th>Changed lines</th></tr></thead>
+          <tbody>
+          <tr class="file-row" data-id="components" tabindex="0" role="button" aria-label="src/components, Modified">
+            <td class="f-path">src/components</td>
+            <td class="f-kind">component · 4 symbols</td>
+            <td><span class="pill modified">Modified</span></td>
+            <td class="f-stat"><span class="add">+22</span> <span class="del">-0</span></td>
+            <td class="f-spans faint">—</td>
+          </tr>
+          <tr class="file-row" data-id="hooks" tabindex="0" role="button" aria-label="src/hooks, Added">
+            <td class="f-path">src/hooks</td>
+            <td class="f-kind">hook · 1 symbols</td>
+            <td><span class="pill added">Added</span></td>
+            <td class="f-stat"><span class="add">+11</span> <span class="del">-0</span></td>
+            <td class="f-spans faint">—</td>
+          </tr>
+          <tr class="file-row" data-id="lib" tabindex="0" role="button" aria-label="src/lib, Modified">
+            <td class="f-path">src/lib</td>
+            <td class="f-kind">module · 1 symbols</td>
+            <td><span class="pill modified">Modified</span></td>
+            <td class="f-stat"><span class="add">+8</span> <span class="del">-2</span></td>
+            <td class="f-spans faint">—</td>
+          </tr>
+          <tr class="file-row" data-id="lib/api" tabindex="0" role="button" aria-label="src/lib/api, Consumed (low risk)">
+            <td class="f-path">src/lib/api</td>
+            <td class="f-kind">module · 1 symbols</td>
+            <td><span class="pill blast">Consumed (low risk)</span></td>
+            <td class="f-stat"><span class="faint">—</span></td>
+            <td class="f-spans faint">—</td>
+          </tr>
+          <tr class="file-row" data-id="pages" tabindex="0" role="button" aria-label="src/pages, Consumed (low risk)">
+            <td class="f-path">src/pages</td>
+            <td class="f-kind">component · 1 symbols</td>
+            <td><span class="pill blast">Consumed (low risk)</span></td>
+            <td class="f-stat"><span class="faint">—</span></td>
+            <td class="f-spans faint">—</td>
+          </tr>
+          <tr class="file-row" data-id="styles" tabindex="0" role="button" aria-label="src/styles, Modified">
+            <td class="f-path">src/styles</td>
+            <td class="f-kind">token · 1 symbols</td>
+            <td><span class="pill modified">Modified</span></td>
+            <td class="f-stat"><span class="add">+1</span> <span class="del">-0</span></td>
+            <td class="f-spans faint">—</td>
+          </tr>
+          <tr class="file-row" data-id="types" tabindex="0" role="button" aria-label="src/types, Modified">
+            <td class="f-path">src/types</td>
+            <td class="f-kind">type · 1 symbols</td>
+            <td><span class="pill modified">Modified</span></td>
+            <td class="f-stat"><span class="add">+1</span> <span class="del">-0</span></td>
+            <td class="f-spans faint">—</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="card-flags">
+      <div class="card-head"><div class="grow"><h2>Attention flags · 3</h2><span class="register-caption" style="margin-top:5px">model judgment</span></div></div>
+      <div class="card-body">
+        <ul class="flags">
+          <li><button data-go="node:lib/api"><span class="n">01</span><span class="ftext">lib/api/products.ts — serializeProduct never reads wishlisted; the field will not survive the API boundary even though the type allows it.<div class="flag-facts faint">lib/api</div></span></button></li>
+          <li><button data-go="chip:c3"><span class="n">02</span><span class="ftext">criterion 3 uncovered — no change in this range touches the cart path.</span></button></li>
+          <li><button data-go="node:lib"><span class="n">03</span><span class="ftext">lib/format.ts — formatPrice was rewritten to Intl.NumberFormat; matches no criterion (drive-by change). Approve or revert explicitly.<div class="flag-facts faint">lib</div></span></button></li>
+          </ul>
+      </div>
+    </section>
+
+  </main>
+
+  <aside class="rightpanel" id="right" data-tab="summary">
+    <div class="tabs" role="tablist" aria-label="Detail panel">
+      <button class="tab active" data-tab="summary" role="tab" aria-selected="true">Summary</button>
+      <button class="tab" data-tab="diff" role="tab" aria-selected="false">Diff</button>
+      <button class="tab" data-tab="notes" role="tab" aria-selected="false">Notes<span class="count">8</span></button>
+    </div>
+
+    <div class="tab-body" id="tab-summary" role="tabpanel" aria-live="polite">
+      <div class="card">
+        <h2>PR Summary</h2>
+        <div id="summary-body">
+          <p class="lede">Built from <code>main..fixture/wishlist</code> at <code>f17c953</code>. 6 files changed → 7 nodes drawn, 0 changed files listed without graph nodes, 2 context nodes hidden. Blast radius computed from <code>types</code>.</p>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Attention Flags<span class="count">3</span></h2>
+        <span class="register-caption">model judgment</span>
+        <ul class="flags">
+          <li><button data-go="node:lib/api"><span class="n">01</span><span class="ftext">lib/api/products.ts — serializeProduct never reads wishlisted; the field will not survive the API boundary even though the type allows it.</span></button></li>
+          <li><button data-go="chip:c3"><span class="n">02</span><span class="ftext">criterion 3 uncovered — no change in this range touches the cart path.</span></button></li>
+          <li><button data-go="node:lib"><span class="n">03</span><span class="ftext">lib/format.ts — formatPrice was rewritten to Intl.NumberFormat; matches no criterion (drive-by change). Approve or revert explicitly.</span></button></li>
+        </ul>
+        <button class="linkbtn" id="view-all-flags">View all flags →</button>
+      </div>
+      <div class="card">
+        <h2>Diff Preview</h2>
+        <div class="card-head" id="diff-preview-head"></div>
+        <div id="diff-preview"></div>
+        <button class="linkbtn" id="open-diff-tab">Open file in diff view →</button>
+      </div>
+    </div>
+
+    <div class="tab-body" id="tab-diff-body" role="tabpanel"></div>
+    <div class="tab-body" id="tab-notes-body" role="tabpanel"></div>
+  </aside>
+
+</div>
+
+<script type="application/json" id="gc-slice">{
+  "groundcheck": "0.6.0",
+  "generated": {
+    "at": "2026-07-27T08:39:41Z",
+    "repo": "storefront",
+    "range": "main..fixture/wishlist",
+    "headSha": "f17c953",
+    "baseSha": "e979706",
+    "tsconfig": "tsconfig.json",
+    "toolVersions": {
+      "node": "22.21.1",
+      "ts-morph": "28.0.0"
+    }
+  },
+  "epicenters": [
+    "types"
+  ],
+  "nodes": [
+    {
+      "id": "components",
+      "file": "src/components",
+      "kind": "component",
+      "status": "modified",
+      "spans": [],
+      "stats": {
+        "added": 22,
+        "removed": 0
+      },
+      "exportedSymbolsChanged": [
+        "ProductCard",
+        "WishlistButton"
+      ],
+      "members": [
+        {
+          "id": "components/CartItem.tsx",
+          "file": "src/components/CartItem.tsx",
+          "kind": "component",
+          "status": "blast",
+          "spans": [],
+          "stats": {
+            "added": 0,
+            "removed": 0
+          },
+          "exportedSymbolsChanged": []
+        },
+        {
+          "id": "components/ProductCard.tsx#ProductCard",
+          "file": "src/components/ProductCard.tsx",
+          "symbol": "ProductCard",
+          "kind": "component",
+          "status": "modified",
+          "spans": [
+            {
+              "start": 17,
+              "end": 17
+            }
+          ],
+          "stats": {
+            "added": 2,
+            "removed": 0
+          },
+          "exportedSymbolsChanged": [
+            "ProductCard"
+          ],
+          "excerpt": [
+            {
+              "op": "ctx",
+              "text": "      <footer className=\"card-footer\">"
+            },
+            {
+              "op": "ctx",
+              "text": "        <PriceTag value={product.price} format={formatPrice} />"
+            },
+            {
+              "op": "add",
+              "text": "        <WishlistButton id={product.id} />"
+            },
+            {
+              "op": "ctx",
+              "text": "      </footer>"
+            },
+            {
+              "op": "ctx",
+              "text": "    </article>"
+            }
+          ]
+        },
+        {
+          "id": "components/ProductGrid.tsx",
+          "file": "src/components/ProductGrid.tsx",
+          "kind": "component",
+          "status": "blast",
+          "spans": [],
+          "stats": {
+            "added": 0,
+            "removed": 0
+          },
+          "exportedSymbolsChanged": []
+        },
+        {
+          "id": "components/WishlistButton.tsx#WishlistButton",
+          "file": "src/components/WishlistButton.tsx",
+          "symbol": "WishlistButton",
+          "kind": "component",
+          "status": "added",
+          "spans": [
+            {
+              "start": 8,
+              "end": 20
+            }
+          ],
+          "stats": {
+            "added": 20,
+            "removed": 0
+          },
+          "exportedSymbolsChanged": [
+            "WishlistButton"
+          ],
+          "excerpt": [
+            {
+              "op": "add",
+              "text": "import { useWishlist } from '../hooks/useWishlist'"
+            },
+            {
+              "op": "add",
+              "text": "import { tokens } from '../styles/tokens'"
+            },
+            {
+              "op": "add",
+              "text": ""
+            },
+            {
+              "op": "add",
+              "text": "type Props = {"
+            },
+            {
+              "op": "add",
+              "text": "  id: string"
+            },
+            {
+              "op": "add",
+              "text": "}"
+            },
+            {
+              "op": "add",
+              "text": ""
+            },
+            {
+              "op": "add",
+              "text": "export function WishlistButton({ id }: Props) {"
+            },
+            {
+              "op": "gap",
+              "text": "… 12 more diff lines (12 changed)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hooks",
+      "file": "src/hooks",
+      "kind": "hook",
+      "status": "added",
+      "spans": [],
+      "stats": {
+        "added": 11,
+        "removed": 0
+      },
+      "exportedSymbolsChanged": [
+        "useWishlist"
+      ],
+      "members": [
+        {
+          "id": "hooks/useWishlist.ts#useWishlist",
+          "file": "src/hooks/useWishlist.ts",
+          "symbol": "useWishlist",
+          "kind": "hook",
+          "status": "added",
+          "spans": [
+            {
+              "start": 6,
+              "end": 11
+            }
+          ],
+          "stats": {
+            "added": 11,
+            "removed": 0
+          },
+          "exportedSymbolsChanged": [
+            "useWishlist"
+          ],
+          "excerpt": [
+            {
+              "op": "add",
+              "text": "import type { Product } from '../types/product'"
+            },
+            {
+              "op": "add",
+              "text": "import { useLocalStore } from './useLocalStore'"
+            },
+            {
+              "op": "add",
+              "text": ""
+            },
+            {
+              "op": "add",
+              "text": "const KEY = 'wishlist'"
+            },
+            {
+              "op": "add",
+              "text": ""
+            },
+            {
+              "op": "add",
+              "text": "export function useWishlist(id: Product['id']) {"
+            },
+            {
+              "op": "add",
+              "text": "  const [ids, setIds] = useLocalStore(KEY)"
+            },
+            {
+              "op": "add",
+              "text": "  const on = ids.includes(id)"
+            },
+            {
+              "op": "gap",
+              "text": "… 3 more diff lines (3 changed)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lib",
+      "file": "src/lib",
+      "kind": "module",
+      "status": "modified",
+      "spans": [],
+      "stats": {
+        "added": 8,
+        "removed": 2
+      },
+      "exportedSymbolsChanged": [
+        "formatPrice"
+      ],
+      "members": [
+        {
+          "id": "lib/format.ts#formatPrice",
+          "file": "src/lib/format.ts",
+          "symbol": "formatPrice",
+          "kind": "module",
+          "status": "modified",
+          "spans": [
+            {
+              "start": 5,
+              "end": 10
+            }
+          ],
+          "stats": {
+            "added": 8,
+            "removed": 2
+          },
+          "exportedSymbolsChanged": [
+            "formatPrice"
+          ],
+          "excerpt": [
+            {
+              "op": "ctx",
+              "text": "import type { Money } from '../types/product'"
+            },
+            {
+              "op": "ctx",
+              "text": ""
+            },
+            {
+              "op": "del",
+              "text": "export const formatPrice = (m: Money) =>"
+            },
+            {
+              "op": "del",
+              "text": "  `${m.cur} ${m.amount.toFixed(2)}`"
+            },
+            {
+              "op": "add",
+              "text": "const locale = 'en-US'"
+            },
+            {
+              "op": "add",
+              "text": ""
+            },
+            {
+              "op": "add",
+              "text": "export function formatPrice(m: Money) {"
+            },
+            {
+              "op": "add",
+              "text": "  return new Intl.NumberFormat(locale, {"
+            },
+            {
+              "op": "gap",
+              "text": "… 4 more diff lines (4 changed)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lib/api",
+      "file": "src/lib/api",
+      "kind": "module",
+      "status": "blast",
+      "spans": [],
+      "stats": {
+        "added": 0,
+        "removed": 0
+      },
+      "exportedSymbolsChanged": [],
+      "members": [
+        {
+          "id": "lib/api/products.ts",
+          "file": "src/lib/api/products.ts",
+          "kind": "module",
+          "status": "blast",
+          "spans": [],
+          "stats": {
+            "added": 0,
+            "removed": 0
+          },
+          "exportedSymbolsChanged": []
+        }
+      ]
+    },
+    {
+      "id": "pages",
+      "file": "src/pages",
+      "kind": "component",
+      "status": "blast",
+      "spans": [],
+      "stats": {
+        "added": 0,
+        "removed": 0
+      },
+      "exportedSymbolsChanged": [],
+      "members": [
+        {
+          "id": "pages/SearchResults.tsx",
+          "file": "src/pages/SearchResults.tsx",
+          "kind": "component",
+          "status": "blast",
+          "spans": [],
+          "stats": {
+            "added": 0,
+            "removed": 0
+          },
+          "exportedSymbolsChanged": []
+        }
+      ]
+    },
+    {
+      "id": "styles",
+      "file": "src/styles",
+      "kind": "token",
+      "status": "modified",
+      "spans": [],
+      "stats": {
+        "added": 1,
+        "removed": 0
+      },
+      "exportedSymbolsChanged": [
+        "tokens"
+      ],
+      "members": [
+        {
+          "id": "styles/tokens.ts#tokens",
+          "file": "src/styles/tokens.ts",
+          "symbol": "tokens",
+          "kind": "token",
+          "status": "modified",
+          "spans": [
+            {
+              "start": 5,
+              "end": 5
+            }
+          ],
+          "stats": {
+            "added": 1,
+            "removed": 0
+          },
+          "exportedSymbolsChanged": [
+            "tokens"
+          ],
+          "excerpt": [
+            {
+              "op": "ctx",
+              "text": "  paper: '#E9E6DC',"
+            },
+            {
+              "op": "ctx",
+              "text": "  accentSky: '#7FB4D9',"
+            },
+            {
+              "op": "add",
+              "text": "  accentRose: '#D97789',"
+            },
+            {
+              "op": "ctx",
+              "text": "}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "types",
+      "file": "src/types",
+      "kind": "type",
+      "status": "modified",
+      "spans": [],
+      "stats": {
+        "added": 1,
+        "removed": 0
+      },
+      "exportedSymbolsChanged": [
+        "Product"
+      ],
+      "members": [
+        {
+          "id": "types/product.ts#Product",
+          "file": "src/types/product.ts",
+          "symbol": "Product",
+          "kind": "type",
+          "status": "modified",
+          "spans": [
+            {
+              "start": 10,
+              "end": 10
+            }
+          ],
+          "stats": {
+            "added": 1,
+            "removed": 0
+          },
+          "exportedSymbolsChanged": [
+            "Product"
+          ],
+          "excerpt": [
+            {
+              "op": "ctx",
+              "text": "  title: string"
+            },
+            {
+              "op": "ctx",
+              "text": "  price: Money"
+            },
+            {
+              "op": "add",
+              "text": "  wishlisted?: boolean"
+            },
+            {
+              "op": "ctx",
+              "text": "}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "ungraphed": [],
+  "edges": [
+    {
+      "from": "components",
+      "to": "hooks",
+      "type": "calls",
+      "evidence": {
+        "file": "src/components/WishlistButton.tsx",
+        "line": 9
+      }
+    },
+    {
+      "from": "components",
+      "to": "lib",
+      "type": "imports",
+      "evidence": {
+        "file": "src/components/ProductCard.tsx",
+        "line": 2
+      }
+    },
+    {
+      "from": "components",
+      "to": "styles",
+      "type": "uses-token",
+      "evidence": {
+        "file": "src/components/WishlistButton.tsx",
+        "line": 15
+      }
+    },
+    {
+      "from": "components",
+      "to": "types",
+      "type": "consumes-type",
+      "evidence": {
+        "file": "src/components/CartItem.tsx",
+        "line": 4
+      }
+    },
+    {
+      "from": "hooks",
+      "to": "types",
+      "type": "consumes-type",
+      "evidence": {
+        "file": "src/hooks/useWishlist.ts",
+        "line": 6
+      }
+    },
+    {
+      "from": "lib/api",
+      "to": "types",
+      "type": "consumes-type",
+      "evidence": {
+        "file": "src/lib/api/products.ts",
+        "line": 3
+      }
+    },
+    {
+      "from": "pages",
+      "to": "types",
+      "type": "consumes-type",
+      "evidence": {
+        "file": "src/pages/SearchResults.tsx",
+        "line": 7
+      }
+    }
+  ],
+  "hidden": {
+    "count": 2,
+    "byKind": {
+      "component": 1,
+      "hook": 1
+    }
+  },
+  "excluded": {
+    "count": 0,
+    "files": []
+  }
+}
+</script>
+<script type="application/json" id="gc-annotations">{
+  "annotations": "0.1.0",
+  "for": {
+    "range": "main..fixture/wishlist",
+    "headSha": "f17c953"
+  },
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "wishlist state persists across reloads",
+      "source": "user",
+      "status": "covered",
+      "nodes": [
+        "hooks",
+        "types"
+      ],
+      "note": "Covered. hooks/useWishlist.ts is localStorage-backed and types/product.ts carries the wishlisted field. Verify the storage key and the SSR guard on write."
+    },
+    {
+      "id": "c2",
+      "text": "toggle on every product card",
+      "source": "user",
+      "status": "covered",
+      "nodes": [
+        "components",
+        "styles"
+      ],
+      "note": "Covered. ProductCard renders the new WishlistButton; the accentRose token exists only to style it. See the collapsed members of components for which files actually changed."
+    },
+    {
+      "id": "c3",
+      "text": "wishlisted items visible in the cart",
+      "source": "user",
+      "status": "uncovered",
+      "nodes": [],
+      "note": "Uncovered. CartItem.tsx sits inside the components node as an untouched blast member; nothing in this range reads product.wishlisted in the cart path."
+    }
+  ],
+  "orphans": [
+    "lib/format.ts#formatPrice"
+  ],
+  "flags": [
+    {
+      "n": 1,
+      "target": {
+        "node": "lib/api"
+      },
+      "text": "lib/api/products.ts — serializeProduct never reads wishlisted; the field will not survive the API boundary even though the type allows it."
+    },
+    {
+      "n": 2,
+      "target": {
+        "criterion": "c3"
+      },
+      "text": "criterion 3 uncovered — no change in this range touches the cart path."
+    },
+    {
+      "n": 3,
+      "target": {
+        "node": "lib"
+      },
+      "text": "lib/format.ts — formatPrice was rewritten to Intl.NumberFormat; matches no criterion (drive-by change). Approve or revert explicitly."
+    }
+  ],
+  "notes": {
+    "types": "Epicenter. One optional field added to Product, so every consumer still type-checks; the misses are silent rather than loud. Check each consumer for a read of wishlisted, not for a compile error.",
+    "components": "Four members, two of them changed. The untouched ones (CartItem, ProductGrid) are here because they consume Product — see the member list for which is which before assuming the whole directory moved.",
+    "hooks": "New hook only. The storage key is a bare 'wishlist' with no namespace, and useLocalStore writes without the SSR guard it uses on read.",
+    "lib": "Contains the one change in this range that matches no criterion. Read the member note.",
+    "styles": "One token added, consumed only by WishlistButton so far.",
+    "lib/api": "Blast: serializeProduct builds the payload field by field and never mentions wishlisted. Highest-value place to look first.",
+    "pages": "Blast: SearchResults consumes Product[] for results only; no read of the new field. Drawn for honesty.",
+    "lib/format.ts#formatPrice": "Rewritten from a template string to Intl.NumberFormat with a module-level locale constant. Changes output formatting for every price in the app and matches no criterion."
+  },
+  "risk": {
+    "lib/api": "high",
+    "pages": "low"
+  },
+  "readingOrder": [
+    "types",
+    "lib/api",
+    "lib/format.ts#formatPrice",
+    "hooks",
+    "components",
+    "styles",
+    "pages"
+  ],
+  "layout": {
+    "types": {
+      "x": 440,
+      "y": 300
+    },
+    "hooks": {
+      "x": 440,
+      "y": 130
+    },
+    "styles": {
+      "x": 700,
+      "y": 200
+    },
+    "components": {
+      "x": 700,
+      "y": 400
+    },
+    "lib": {
+      "x": 940,
+      "y": 300
+    },
+    "lib/api": {
+      "x": 180,
+      "y": 180
+    },
+    "pages": {
+      "x": 180,
+      "y": 420
+    }
+  }
+}
+</script>
+<script>
+
+const slice = JSON.parse(document.getElementById('gc-slice').textContent);
+const ann = JSON.parse(document.getElementById('gc-annotations').textContent);
+const nodeById = Object.fromEntries(slice.nodes.map(n => [n.id, n]));
+const ungraphed = slice.ungraphed || [];
+const ungraphedByFile = Object.fromEntries(ungraphed.map(f => [f.file, f]));
+const memberParent = {};
+slice.nodes.forEach(n => (n.members || []).forEach(m => { memberParent[m.id] = n.id; }));
+const notes = ann.notes || {};
+const risk = ann.risk || {};
+const orphans = ann.orphans || [];
+const criteria = ann.criteria || [];
+const shell = document.getElementById('shell');
+const right = document.getElementById('right');
+const summaryBody = document.getElementById('summary-body');
+const diffPreview = document.getElementById('diff-preview');
+const diffPreviewHead = document.getElementById('diff-preview-head');
+const tabDiff = document.getElementById('tab-diff-body');
+const tabNotes = document.getElementById('tab-notes-body');
+const svg = document.getElementById('canvas');
+const nodeEls = Array.from(document.querySelectorAll('.node'));
+const edgeEls = Array.from(document.querySelectorAll('.edge'));
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const base = p => String(p).split('/').pop();
+const spanText = n => n.spans.length ? n.spans.map(s => s.start === s.end ? 'L' + s.start : 'L' + s.start + '–L' + s.end).join(', ') : '';
+const CHANGED = ['added', 'modified', 'deleted'];
+/* The overview lede is computed markup the renderer already emitted; stash it
+   rather than rebuilding it here, so there is one source for that sentence. */
+const overviewHtml = summaryBody.innerHTML;
+
+/* ── filters, focus, search: fade, never remove ────────────────────────────
+   DESIGN_CONTRACT § Signature elements: no control in this artifact removes a
+   node from the document. Every hide below is an opacity class, and the node
+   count the validator reads is unaffected by any of them. */
+const state = {
+  view: 'graph',
+  tab: 'summary',
+  status: { added: true, modified: true, deleted: true, blast: true, orphan: true },
+  edges: { flow: true, type: true, token: true, imports: true },
+  context: true,
+  rings: true,
+  search: '',
+  collapsed: false,
+  selected: null,
+  criterion: null,
+};
+const isOrphanNode = el => el.dataset.orphan === '1';
+function nodePassesFilters(el) {
+  const s = el.dataset.status;
+  if (s === 'context') { if (!state.context) return false; }
+  else if (state.status[s] === false) return false;
+  if (isOrphanNode(el) && state.status.orphan === false) return false;
+  if (state.search) {
+    const hay = (el.dataset.file + ' ' + el.dataset.symbol + ' ' + el.dataset.id).toLowerCase();
+    if (hay.indexOf(state.search) < 0) return false;
+  }
+  return true;
+}
+function applyFilters() {
+  const visible = new Set();
+  nodeEls.forEach(el => {
+    const pass = nodePassesFilters(el);
+    el.classList.toggle('filtered', !pass);
+    if (pass) visible.add(el.dataset.id);
+  });
+  edgeEls.forEach(el => {
+    const pass = state.edges[el.dataset.group] !== false && visible.has(el.dataset.from) && visible.has(el.dataset.to);
+    el.classList.toggle('filtered', !pass);
+  });
+  document.querySelectorAll('.risk-label, .orphan-label').forEach(el => {
+    el.classList.toggle('filtered', !visible.has(el.dataset.for));
+  });
+  svg.classList.toggle('no-rings', !state.rings);
+  document.querySelectorAll('.file-row[data-id]').forEach(el => {
+    el.classList.toggle('filtered', !visible.has(el.dataset.id));
+  });
+}
+
+/* ── zoom / pan: viewBox only, placed coordinates untouched ────────────────*/
+const BASE_VIEW = { x: 0, y: 0, w: 1180, h: 620 };
+const view = Object.assign({}, BASE_VIEW);
+const zoomOut = document.getElementById('zoom-out');
+const zoomIn = document.getElementById('zoom-in');
+const zoomSel = document.getElementById('zoom-level');
+function applyView() {
+  svg.setAttribute('viewBox', [view.x, view.y, view.w, view.h].map(v => Math.round(v * 100) / 100).join(' '));
+  const pct = Math.round((BASE_VIEW.w / view.w) * 100);
+  /* Wheel and button zoom land on scales the preset list does not carry, so the
+     readout keeps one scratch <option> for whatever the current scale is. */
+  if (![...zoomSel.options].some(o => !o.dataset.custom && o.value === String(pct))) {
+    let custom = zoomSel.querySelector('option[data-custom]');
+    if (!custom) {
+      custom = document.createElement('option');
+      custom.dataset.custom = '1';
+      zoomSel.appendChild(custom);
+    }
+    custom.value = String(pct);
+    custom.textContent = pct + '%';
+  }
+  zoomSel.value = String(pct);
+}
+function setScale(scale, cx, cy) {
+  const clamped = Math.min(4, Math.max(0.25, scale));
+  const w = BASE_VIEW.w / clamped, h = BASE_VIEW.h / clamped;
+  const ax = cx === undefined ? view.x + view.w / 2 : cx;
+  const ay = cy === undefined ? view.y + view.h / 2 : cy;
+  view.x = ax - (ax - view.x) * (w / view.w);
+  view.y = ay - (ay - view.y) * (h / view.h);
+  view.w = w; view.h = h;
+  applyView();
+}
+const currentScale = () => BASE_VIEW.w / view.w;
+zoomIn.addEventListener('click', () => setScale(currentScale() * 1.25));
+zoomOut.addEventListener('click', () => setScale(currentScale() / 1.25));
+zoomSel.addEventListener('change', () => setScale(Number(zoomSel.value) / 100));
+document.getElementById('fit-view').addEventListener('click', () => {
+  Object.assign(view, BASE_VIEW);
+  applyView();
+});
+svg.addEventListener('wheel', e => {
+  e.preventDefault();
+  const pt = svgPoint(e);
+  setScale(currentScale() * (e.deltaY < 0 ? 1.12 : 1 / 1.12), pt.x, pt.y);
+}, { passive: false });
+function svgPoint(e) {
+  const r = svg.getBoundingClientRect();
+  return {
+    x: view.x + ((e.clientX - r.left) / r.width) * view.w,
+    y: view.y + ((e.clientY - r.top) / r.height) * view.h,
+  };
+}
+let panning = null;
+svg.addEventListener('pointerdown', e => {
+  if (e.target.closest('.node')) return;
+  panning = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y };
+  svg.classList.add('panning');
+});
+window.addEventListener('pointermove', e => {
+  if (!panning) return;
+  const r = svg.getBoundingClientRect();
+  view.x = panning.vx - ((e.clientX - panning.x) / r.width) * view.w;
+  view.y = panning.vy - ((e.clientY - panning.y) / r.height) * view.h;
+  applyView();
+});
+window.addEventListener('pointerup', () => { panning = null; svg.classList.remove('panning'); });
+
+/* ── selection ─────────────────────────────────────────────────────────────*/
+function clearSelection() {
+  nodeEls.forEach(el => el.classList.remove('selected', 'faded'));
+  document.querySelectorAll('.crit-row, .file-row').forEach(el => el.classList.remove('active'));
+  edgeEls.forEach(el => { el.classList.remove('hot', 'mute'); el.setAttribute('marker-end', 'url(#m-dim)'); });
+}
+function heatEdges(id, on) {
+  edgeEls.forEach(el => {
+    if (el.dataset.from === id || el.dataset.to === id) {
+      el.classList.toggle('hot', on);
+      el.setAttribute('marker-end', on ? 'url(#m-hot)' : 'url(#m-dim)');
+    }
+  });
+}
+/* Diff excerpt: computed facts (git's bytes) in the default register. The gutter
+   numbers excerpt lines, not file lines — the slice carries no file line numbers
+   and inventing them would be a fabricated fact. That caveat is stated once per
+   container (below), not under every block: a caption that repeats stops being
+   read. */
+const GUTTER_CAPTION = '<p class="caption">diff gutters number excerpt lines, not file lines</p>';
+function diffBlock(n) {
+  if (!n.excerpt || !n.excerpt.length) return '';
+  const cls = { add: 'a', del: 'd', ctx: 'c', gap: 'g' };
+  const sign = { add: '+', del: '-', ctx: ' ', gap: '' };
+  let i = 0;
+  const rows = n.excerpt.map(l => {
+    const gap = l.op === 'gap';
+    const num = gap ? '' : String(++i);
+    const text = gap ? '/* ' + l.text + ' */' : sign[l.op] + l.text;
+    return '<span class="dl ' + (cls[l.op] || 'c') + '"><i aria-hidden="true">' + num + '</i>' + esc(text) + '</span>';
+  });
+  return '<pre class="diff">' + rows.join('\n') + '</pre>';
+}
+function reviewerNote(id) {
+  if (!notes[id]) return '';
+  return '<div class="reviewer-note"><span class="register-caption">reviewer note</span><p class="why">' + esc(notes[id]) + '</p></div>';
+}
+function whyFlagged(id) {
+  const out = slice.edges.filter(e => e.from === id).map(e =>
+    '<li><code>' + esc(e.type) + '</code> → <b>' + esc(e.to) + '</b> <span class="faint">' + esc(e.evidence.file) + ':' + e.evidence.line + '</span></li>');
+  if (!out.length) return '';
+  return '<h3>why flagged</h3><ul class="facts">' + out.join('') + '</ul>';
+}
+function changedLines(n) {
+  const rows = [];
+  if (n.exportedSymbolsChanged.length) rows.push('<li>exported symbols changed: <b>' + esc(n.exportedSymbolsChanged.join(', ')) + '</b></li>');
+  if (n.spans.length) rows.push('<li>changed lines: <b>' + esc(spanText(n)) + '</b></li>');
+  const consumers = slice.edges.filter(e => e.to === n.id);
+  if (consumers.length) rows.push('<li>referenced by <b>' + consumers.length + '</b> slice node(s)</li>');
+  return rows.length ? '<h3>computed facts</h3><ul class="facts">' + rows.join('') + '</ul>' : '';
+}
+/* Collapsed (--collapse dir) nodes keep their members: symbol-level facts and
+   any note the reviewer attached to a member id. */
+function memberFacts(n) {
+  if (!n.members || !n.members.length) return '';
+  const rows = n.members.map(m => {
+    const changed = CHANGED.indexOf(m.status) >= 0;
+    const stats = changed ? ' +' + m.stats.added + ' -' + m.stats.removed : '';
+    const lines = spanText(m) ? ' · ' + spanText(m) : '';
+    const symbols = m.exportedSymbolsChanged.length ? '<br><span class="faint">exports: ' + esc(m.exportedSymbolsChanged.join(', ')) + '</span>' : '';
+    const orph = orphans.indexOf(m.id) >= 0 ? ' <span class="pill orphan">orphan</span>' : '';
+    const rk = risk[m.id] ? ' <span class="pill risk-' + esc(risk[m.id]) + '">risk ' + esc(risk[m.id]) + '</span>' : '';
+    return '<li><b>' + esc(m.id) + '</b> <span class="pill ' + esc(m.status) + '">' + esc(m.status) + '</span>' + rk + orph +
+      '<span class="faint">' + esc(stats) + esc(lines) + '</span>' + symbols + reviewerNote(m.id) + diffBlock(m) + '</li>';
+  });
+  const anyDiff = n.members.some(m => m.excerpt && m.excerpt.length);
+  return '<h3>grouped symbols · ' + n.members.length + '</h3><ul class="facts members">' + rows.join('') + '</ul>' +
+    (anyDiff ? GUTTER_CAPTION : '');
+}
+function nodeStat(n) {
+  return CHANGED.indexOf(n.status) >= 0
+    ? '<span class="add">+' + n.stats.added + '</span> <span class="del">-' + n.stats.removed + '</span>'
+    : '<span class="faint">untouched in this range</span>';
+}
+function selectNode(id) {
+  clearSelection();
+  /* A member id (from readingOrder on a collapsed slice) resolves to the node
+     that stands for it; anything unknown is ignored rather than throwing. */
+  if (!nodeById[id] && memberParent[id]) id = memberParent[id];
+  const n = nodeById[id];
+  if (!n) return;
+  state.selected = id;
+  state.criterion = null;
+  const el = nodeEls.find(e => e.dataset.id === id);
+  if (el) el.classList.add('selected');
+  document.querySelectorAll('.file-row[data-id="' + cssEsc(id) + '"]').forEach(r => r.classList.add('active'));
+  edgeEls.forEach(e => {
+    const hit = e.dataset.from === id || e.dataset.to === id;
+    e.classList.toggle('hot', hit);
+    e.classList.toggle('mute', !hit);
+    e.setAttribute('marker-end', hit ? 'url(#m-hot)' : 'url(#m-dim)');
+  });
+  const changed = CHANGED.indexOf(n.status) >= 0;
+  const judgment = [];
+  if (risk[id]) judgment.push('<span class="pill risk-' + esc(risk[id]) + '">risk ' + esc(risk[id]) + '</span>');
+  if (orphans.indexOf(id) >= 0) judgment.push('<span class="pill orphan">orphan</span>');
+  summaryBody.innerHTML =
+    '<button class="back" id="back">← back to slice overview</button>' +
+    '<div class="file-head"><span class="path">' + esc(base(n.file)) + '</span>' +
+      '<span class="pill ' + esc(n.status) + '">' + esc(statusLabel(n.status)) + '</span>' +
+      (n.symbol ? '<span class="tag">' + esc(n.symbol) + '</span>' : '') + '</div>' +
+    (judgment.length ? '<div class="judgment-pills"><span class="register-caption">model judgment</span>' + judgment.join('') + '</div>' : '') +
+    '<div class="loc">' + esc(n.file) + ' · ' + nodeStat(n) + (spanText(n) ? ' · ' + esc(spanText(n)) : '') + '</div>' +
+    reviewerNote(id) +
+    (changed ? changedLines(n) : whyFlagged(id)) +
+    memberFacts(n);
+  document.getElementById('back').addEventListener('click', overview);
+  renderDiffPreview(n);
+  renderDiffTab(n);
+}
+function selectUngraphed(file) {
+  clearSelection();
+  const n = ungraphedByFile[file];
+  if (!n) return;
+  state.selected = 'file:' + file;
+  state.criterion = null;
+  document.querySelectorAll('.file-row.ungraphed[data-file="' + cssEsc(file) + '"]').forEach(r => r.classList.add('active'));
+  summaryBody.innerHTML =
+    '<button class="back" id="back">← back to slice overview</button>' +
+    '<div class="file-head"><span class="path">' + esc(base(n.file)) + '</span>' +
+      '<span class="pill ' + esc(n.status) + '">' + esc(statusLabel(n.status)) + '</span>' +
+      '<span class="tag">not graphed</span></div>' +
+    '<div class="loc">' + esc(n.file) + ' · ' + nodeStat(n) + (spanText(n) ? ' · ' + esc(spanText(n)) : '') + '</div>' +
+    '<h3>computed facts</h3><ul class="facts"><li>This changed file is listed for review but has no dependency-graph node.</li></ul>';
+  document.getElementById('back').addEventListener('click', overview);
+  renderDiffPreview(n);
+  renderDiffTab(n);
+}
+const STATUS_LABELS = {"added":"Added","modified":"Modified","deleted":"Deleted","blast":"Consumed (low risk)","context":"Context"};
+const statusLabel = s => STATUS_LABELS[s] || s;
+const cssEsc = s => String(s).replace(/["\\]/g, '\\$&');
+function renderDiffPreview(n) {
+  if (!n) {
+    diffPreviewHead.innerHTML = '';
+    diffPreview.innerHTML = '<p class="empty">select a file or node to read its diff</p>';
+    return;
+  }
+  diffPreviewHead.innerHTML =
+    '<span class="dp-path">' + esc(n.file) + '</span>' +
+    '<span class="dp-stat">' + nodeStat(n) + '</span>' +
+    '<span class="pill ' + esc(n.status) + '">' + esc(statusLabel(n.status)) + '</span>';
+  const block = diffBlock(n);
+  diffPreview.innerHTML = block
+    ? block + GUTTER_CAPTION
+    : '<p class="empty">' + (n.status === 'blast' || n.status === 'context'
+      ? 'untouched in this range — see why flagged above'
+      : 'no textual excerpt available for this change') + '</p>';
+}
+function renderDiffTab(n) {
+  const list = n ? [n] : [...slice.nodes, ...ungraphed].filter(x => x.excerpt && x.excerpt.length);
+  if (!list.length) { tabDiff.innerHTML = '<p class="empty">no diff excerpts in this slice</p>'; return; }
+  /* One caption for the whole tab, however many blocks it holds. */
+  tabDiff.innerHTML = GUTTER_CAPTION + list.map(x =>
+    '<div class="card"><div class="card-head"><span class="dp-path">' + esc(x.file) + '</span>' +
+    '<span class="dp-stat">' + nodeStat(x) + '</span></div>' +
+    (diffBlock(x) || '<p class="empty">no excerpt for this node</p>') +
+    (x.members || []).map(m => diffBlock(m)).join('') + '</div>').join('');
+}
+function renderNotesTab() {
+  const ids = Object.keys(notes);
+  if (!ids.length) { tabNotes.innerHTML = '<p class="empty">no reviewer notes in this slice</p>'; return; }
+  tabNotes.innerHTML = '<div class="card"><span class="register-caption">model judgment</span>' + ids.map(id =>
+    '<div class="note-entry"><button class="note-target" data-go="node:' + esc(id) + '">' + esc(id) + '</button>' +
+    reviewerNote(id) + '</div>').join('') + '</div>';
+  wireGo(tabNotes);
+}
+function activateCriterion(cid) {
+  clearSelection();
+  state.selected = null;
+  state.criterion = cid;
+  const row = document.querySelector('.crit-row[data-id="' + cssEsc(cid) + '"]');
+  if (row) row.classList.add('active');
+  const isOrphan = cid.indexOf('orphan:') === 0;
+  const c = isOrphan ? null : criteria.find(x => x.id === cid);
+  if (!isOrphan && !c) return;
+  const ids = isOrphan ? [cid.slice(7)] : (c.nodes || []);
+  nodeEls.forEach(el => { if (ids.indexOf(el.dataset.id) < 0) el.classList.add('faded'); });
+  edgeEls.forEach(el => { if (!(ids.indexOf(el.dataset.from) >= 0 && ids.indexOf(el.dataset.to) >= 0)) el.classList.add('mute'); });
+  const label = isOrphan ? 'orphan · ' + base(ids[0]) : (c.status === 'covered' ? 'Passed' : 'Failed') + ' · ' + c.text;
+  const note = isOrphan
+    ? 'Changed in this range but matched to no criterion. Approve or revert — explicitly.'
+    : (c.note || '');
+  summaryBody.innerHTML =
+    '<button class="back" id="back">← back to slice overview</button>' +
+    '<div class="file-head"><span class="path">' + (isOrphan ? 'orphan change' : 'criterion ' + esc(cid)) + '</span></div>' +
+    '<div class="loc">' + esc(label) + '</div>' +
+    '<div class="reviewer-note"><span class="register-caption">model-matched</span><p class="why">' + esc(note) + '</p>' +
+      '<ul class="facts">' + ids.map(i => '<li><b>' + esc(i) + '</b></li>').join('') + '</ul></div>';
+  document.getElementById('back').addEventListener('click', overview);
+  renderDiffPreview(nodeById[ids[0]] || null);
+}
+function overview() {
+  clearSelection();
+  state.selected = null;
+  state.criterion = null;
+  summaryBody.innerHTML = overviewHtml;
+  renderDiffPreview(null);
+  renderDiffTab(null);
+}
+function wireGo(root) {
+  root.querySelectorAll('[data-go]').forEach(b => {
+    if (b.dataset.wired) return;
+    b.dataset.wired = '1';
+    b.addEventListener('click', () => {
+      const parts = b.dataset.go.split(':');
+      const kind = parts.shift();
+      const id = parts.join(':');
+      if (kind === 'node') selectNode(id); else activateCriterion(id);
+    });
+  });
+}
+
+/* ── views and tabs ────────────────────────────────────────────────────────*/
+function setView(v) {
+  state.view = v;
+  shell.dataset.view = v;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    const on = el.dataset.view === v;
+    el.classList.toggle('active', on);
+    if (on) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
+  });
+}
+function setTab(t) {
+  state.tab = t;
+  right.dataset.tab = t;
+  document.querySelectorAll('.tab').forEach(el => {
+    const on = el.dataset.tab === t;
+    el.classList.toggle('active', on);
+    el.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  if (t === 'notes') renderNotesTab();
+}
+document.querySelectorAll('.nav-item').forEach(el => el.addEventListener('click', () => { setView(el.dataset.view); save(); }));
+document.querySelectorAll('.tab').forEach(el => el.addEventListener('click', () => setTab(el.dataset.tab)));
+document.getElementById('view-all-flags').addEventListener('click', () => { setView('flags'); save(); });
+document.getElementById('open-diff-tab').addEventListener('click', () => setTab('diff'));
+
+/* ── controls ──────────────────────────────────────────────────────────────*/
+document.querySelectorAll('input[data-status]').forEach(el =>
+  el.addEventListener('change', () => { state.status[el.dataset.status] = el.checked; applyFilters(); save(); }));
+document.querySelectorAll('input[data-edge]').forEach(el =>
+  el.addEventListener('change', () => { state.edges[el.dataset.edge] = el.checked; applyFilters(); save(); }));
+const ctxToggle = document.getElementById('focus-context');
+const ringToggle = document.getElementById('focus-rings');
+ctxToggle.addEventListener('change', () => { state.context = ctxToggle.checked; applyFilters(); save(); });
+ringToggle.addEventListener('change', () => { state.rings = ringToggle.checked; applyFilters(); save(); });
+document.getElementById('clear-filters').addEventListener('click', () => {
+  document.querySelectorAll('input[data-status], input[data-edge]').forEach(el => { if (!el.disabled) el.checked = true; });
+  Object.keys(state.status).forEach(k => state.status[k] = true);
+  Object.keys(state.edges).forEach(k => state.edges[k] = true);
+  searchInput.value = '';
+  state.search = '';
+  applyFilters();
+  save();
+});
+const searchInput = document.getElementById('search');
+searchInput.addEventListener('input', () => { state.search = searchInput.value.trim().toLowerCase(); applyFilters(); });
+const critCard = document.getElementById('card-criteria');
+document.getElementById('crit-collapse').addEventListener('click', () => {
+  state.collapsed = !state.collapsed;
+  critCard.classList.toggle('collapsed', state.collapsed);
+  save();
+});
+
+/* ── save view: per-slice, so one slice never inherits another's view ──────*/
+const KEY = 'groundcheck:view:' + slice.generated.headSha;
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify({
+      view: state.view, status: state.status, edges: state.edges,
+      context: state.context, rings: state.rings, collapsed: state.collapsed,
+    }));
+    saveBtn.classList.add('saved');
+    setTimeout(() => saveBtn.classList.remove('saved'), 900);
+  } catch (e) { /* private mode: the artifact still works, it just does not persist */ }
+}
+const saveBtn = document.getElementById('save-view');
+saveBtn.addEventListener('click', save);
+(function restore() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { saved = null; }
+  if (!saved) return;
+  Object.assign(state.status, saved.status || {});
+  Object.assign(state.edges, saved.edges || {});
+  state.context = saved.context !== false;
+  state.rings = saved.rings !== false;
+  state.collapsed = !!saved.collapsed;
+  document.querySelectorAll('input[data-status]').forEach(el => { if (!el.disabled) el.checked = state.status[el.dataset.status] !== false; });
+  document.querySelectorAll('input[data-edge]').forEach(el => { if (!el.disabled) el.checked = state.edges[el.dataset.edge] !== false; });
+  ctxToggle.checked = state.context;
+  ringToggle.checked = state.rings;
+  critCard.classList.toggle('collapsed', state.collapsed);
+  if (saved.view) setView(saved.view);
+})();
+
+/* ── row and node wiring ───────────────────────────────────────────────────*/
+const activate = (el, fn) => {
+  el.addEventListener('click', fn);
+  el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } });
+};
+nodeEls.forEach(el => {
+  activate(el, () => selectNode(el.dataset.id));
+  el.addEventListener('mouseenter', () => heatEdges(el.dataset.id, true));
+  el.addEventListener('mouseleave', () => heatEdges(el.dataset.id, false));
+});
+document.querySelectorAll('.crit-row[data-id]').forEach(el => activate(el, () => activateCriterion(el.dataset.id)));
+document.querySelectorAll('.file-row[data-id]').forEach(el => activate(el, () => selectNode(el.dataset.id)));
+document.querySelectorAll('.file-row.ungraphed[data-file]').forEach(el => activate(el, () => selectUngraphed(el.dataset.file)));
+wireGo(document);
+svg.addEventListener('click', e => {
+  if (e.target.tagName === 'rect' && e.target.getAttribute('fill') === 'url(#dots)') overview();
+});
+
+applyView();
+applyFilters();
+renderDiffPreview(null);
+renderDiffTab(null);
+
+</script>
+</body>
+</html>

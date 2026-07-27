@@ -1,0 +1,118 @@
+{
+  "annotations": "0.1.0",
+  "for": {
+    "range": "main..fixture/wishlist",
+    "headSha": "f17c953"
+  },
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "wishlist state persists across reloads",
+      "source": "user",
+      "status": "covered",
+      "nodes": [
+        "hooks",
+        "types"
+      ],
+      "note": "Covered. hooks/useWishlist.ts is localStorage-backed and types/product.ts carries the wishlisted field. Verify the storage key and the SSR guard on write."
+    },
+    {
+      "id": "c2",
+      "text": "toggle on every product card",
+      "source": "user",
+      "status": "covered",
+      "nodes": [
+        "components",
+        "styles"
+      ],
+      "note": "Covered. ProductCard renders the new WishlistButton; the accentRose token exists only to style it. See the collapsed members of components for which files actually changed."
+    },
+    {
+      "id": "c3",
+      "text": "wishlisted items visible in the cart",
+      "source": "user",
+      "status": "uncovered",
+      "nodes": [],
+      "note": "Uncovered. CartItem.tsx sits inside the components node as an untouched blast member; nothing in this range reads product.wishlisted in the cart path."
+    }
+  ],
+  "orphans": [
+    "lib/format.ts#formatPrice"
+  ],
+  "flags": [
+    {
+      "n": 1,
+      "target": {
+        "node": "lib/api"
+      },
+      "text": "lib/api/products.ts — serializeProduct never reads wishlisted; the field will not survive the API boundary even though the type allows it."
+    },
+    {
+      "n": 2,
+      "target": {
+        "criterion": "c3"
+      },
+      "text": "criterion 3 uncovered — no change in this range touches the cart path."
+    },
+    {
+      "n": 3,
+      "target": {
+        "node": "lib"
+      },
+      "text": "lib/format.ts — formatPrice was rewritten to Intl.NumberFormat; matches no criterion (drive-by change). Approve or revert explicitly."
+    }
+  ],
+  "notes": {
+    "types": "Epicenter. One optional field added to Product, so every consumer still type-checks; the misses are silent rather than loud. Check each consumer for a read of wishlisted, not for a compile error.",
+    "components": "Four members, two of them changed. The untouched ones (CartItem, ProductGrid) are here because they consume Product — see the member list for which is which before assuming the whole directory moved.",
+    "hooks": "New hook only. The storage key is a bare 'wishlist' with no namespace, and useLocalStore writes without the SSR guard it uses on read.",
+    "lib": "Contains the one change in this range that matches no criterion. Read the member note.",
+    "styles": "One token added, consumed only by WishlistButton so far.",
+    "lib/api": "Blast: serializeProduct builds the payload field by field and never mentions wishlisted. Highest-value place to look first.",
+    "pages": "Blast: SearchResults consumes Product[] for results only; no read of the new field. Drawn for honesty.",
+    "lib/format.ts#formatPrice": "Rewritten from a template string to Intl.NumberFormat with a module-level locale constant. Changes output formatting for every price in the app and matches no criterion."
+  },
+  "risk": {
+    "lib/api": "high",
+    "pages": "low"
+  },
+  "readingOrder": [
+    "types",
+    "lib/api",
+    "lib/format.ts#formatPrice",
+    "hooks",
+    "components",
+    "styles",
+    "pages"
+  ],
+  "layout": {
+    "types": {
+      "x": 440,
+      "y": 300
+    },
+    "hooks": {
+      "x": 440,
+      "y": 130
+    },
+    "styles": {
+      "x": 700,
+      "y": 200
+    },
+    "components": {
+      "x": 700,
+      "y": 400
+    },
+    "lib": {
+      "x": 940,
+      "y": 300
+    },
+    "lib/api": {
+      "x": 180,
+      "y": 180
+    },
+    "pages": {
+      "x": 180,
+      "y": 420
+    }
+  }
+}

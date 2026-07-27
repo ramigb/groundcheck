@@ -1,0 +1,504 @@
+<!-- SUPERSEDED: this is the DESIGN_CONTRACT v0.1.0 golden. The current golden is
+     assets/shell-mock.png (v0.2.0). Kept for history only; it does not describe
+     the artifact render-slice.ts emits. Where the two disagree, the PNG wins. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>groundcheck · feat/wishlist — mock review slice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0D1321;
+    --panel:#121A2B;
+    --panel2:#172137;
+    --grid:#1D2A46;
+    --line:#2A3856;
+    --paper:#E9E6DC;
+    --dim:#8A94AC;
+    --faint:#5B678A;
+    --added:#63C68F;
+    --modified:#E5B04B;
+    --blast:#E06552;
+    --context:#4E5F82;
+    --violet:#A78BDA;
+    --mono:'Spline Sans Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:'Instrument Sans',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--ink);color:var(--paper);
+    font-family:var(--mono);font-size:13px;
+    display:flex;flex-direction:column;min-height:100vh;
+  }
+
+  /* ── toolbar ─────────────────────────── */
+  header{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:10px 18px;border-bottom:1px solid var(--grid);
+    background:linear-gradient(180deg,#101828,#0D1321);
+  }
+  .wordmark{font-weight:600;letter-spacing:.04em}
+  .wordmark::before{content:"◉ ";color:var(--modified)}
+  .tag{
+    font-size:10.5px;color:var(--dim);border:1px solid var(--grid);
+    border-radius:4px;padding:2px 7px;letter-spacing:.03em;white-space:nowrap;
+  }
+  .tag b{color:var(--paper);font-weight:500}
+  .tag.m3{border-style:dashed;color:var(--faint)}
+  header .spacer{flex:1}
+  .stat{font-size:11px;color:var(--dim);white-space:nowrap}
+  .stat .add{color:var(--added)} .stat .del{color:var(--blast)}
+
+  /* ── main split ──────────────────────── */
+  main{flex:1;display:flex;min-height:0}
+  .graph-wrap{
+    flex:1.55;position:relative;min-width:0;
+    border-right:1px solid var(--grid);
+  }
+  svg{display:block;width:100%;height:100%;min-height:430px}
+
+  /* legend */
+  .legend{
+    position:absolute;left:14px;bottom:12px;
+    background:rgba(13,19,33,.88);border:1px solid var(--grid);border-radius:8px;
+    padding:10px 12px;font-size:10.5px;color:var(--dim);
+    display:grid;grid-template-columns:auto auto;gap:5px 22px;
+    backdrop-filter:blur(3px);
+  }
+  .legend .k{display:flex;align-items:center;gap:7px;white-space:nowrap}
+  .dot{width:9px;height:9px;border-radius:3px;flex:none}
+  .lseg{width:22px;height:0;border-top:2px solid var(--faint);flex:none}
+  .lseg.dash{border-top-style:dashed}
+  .lseg.dots{border-top-style:dotted}
+  .lseg.thin{border-top-width:1px;opacity:.6}
+
+  .hidden-note{
+    position:absolute;right:14px;top:12px;font-size:10.5px;color:var(--faint);
+    border:1px dashed var(--grid);border-radius:6px;padding:4px 9px;
+    background:rgba(13,19,33,.8);
+  }
+  .hidden-note b{color:var(--dim);font-weight:500}
+
+  /* ── SVG pieces ──────────────────────── */
+  .edge{stroke:var(--line);fill:none;transition:stroke .15s,opacity .15s}
+  .edge.type{stroke-dasharray:6 5;stroke-width:1.5}
+  .edge.renders{stroke-width:2.2}
+  .edge.calls{stroke-width:1.5}
+  .edge.token{stroke-dasharray:2 4;stroke-width:1.5}
+  .edge.imports{stroke-width:1;opacity:.55}
+  .edge.hot{stroke:var(--paper);opacity:1}
+  .edge.hot.type{stroke:var(--blast)}
+  .edge.mute{opacity:.14}
+
+  .node{cursor:pointer;outline:none}
+  .node rect.body{
+    fill:var(--panel2);stroke-width:1.4;rx:9;
+    transition:filter .15s,opacity .15s;
+  }
+  .node text{font-family:var(--mono);pointer-events:none}
+  .node .name{fill:var(--paper);font-size:11.5px;font-weight:500}
+  .node .sub{fill:var(--dim);font-size:9.5px}
+  .node .glyph{font-size:10px;font-weight:600}
+  .node rect.badge{rx:4}
+  .node.added rect.body{stroke:var(--added)}
+  .node.added rect.badge{fill:rgba(99,198,143,.16)} .node.added .glyph{fill:var(--added)}
+  .node.modified rect.body{stroke:var(--modified)}
+  .node.modified rect.badge{fill:rgba(229,176,75,.16)} .node.modified .glyph{fill:var(--modified)}
+  .node.blast rect.body{stroke:var(--blast);stroke-dasharray:4 3}
+  .node.blast rect.badge{fill:rgba(224,101,82,.14)} .node.blast .glyph{fill:var(--blast)}
+  .node.faded{opacity:.22}
+  .node.selected rect.body{filter:drop-shadow(0 0 7px rgba(233,230,220,.35));stroke-width:2}
+  .node:focus-visible rect.body{stroke:var(--paper);stroke-width:2}
+
+  .ring{fill:none;stroke:var(--blast);opacity:.16;stroke-dasharray:3 6}
+  @keyframes ringpulse{0%,100%{opacity:.10}50%{opacity:.26}}
+  .ring.r1{animation:ringpulse 4s ease-in-out infinite}
+  .ring.r2{animation:ringpulse 4s ease-in-out 1.3s infinite}
+  .ring.r3{animation:ringpulse 4s ease-in-out 2.6s infinite}
+  @media (prefers-reduced-motion:reduce){.ring{animation:none !important}}
+
+  /* ── detail panel ────────────────────── */
+  aside{
+    flex:1;min-width:300px;max-width:430px;overflow-y:auto;
+    padding:18px 20px;background:var(--panel);
+  }
+  aside h2{
+    font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--faint);margin-bottom:12px;
+  }
+  .file-head{display:flex;align-items:center;gap:9px;margin-bottom:4px;flex-wrap:wrap}
+  .file-head .path{font-size:13.5px;font-weight:600}
+  .pill{font-size:9.5px;border-radius:4px;padding:2px 7px;letter-spacing:.05em;font-weight:600}
+  .pill.added{background:rgba(99,198,143,.15);color:var(--added)}
+  .pill.modified{background:rgba(229,176,75,.15);color:var(--modified)}
+  .pill.blast{background:rgba(224,101,82,.14);color:var(--blast)}
+  .pill.orphan{background:rgba(167,139,218,.15);color:var(--violet)}
+  .pill.risk-high{background:rgba(224,101,82,.22);color:#F1937F}
+  .pill.risk-med{background:rgba(229,176,75,.14);color:var(--modified)}
+  .pill.risk-low{background:rgba(78,95,130,.25);color:var(--dim)}
+  .loc{font-size:10.5px;color:var(--faint);margin-bottom:14px}
+  .why{
+    font-family:var(--sans);font-size:13.5px;line-height:1.55;color:#C9CDD9;
+    margin-bottom:16px;
+  }
+  .why em{color:var(--paper);font-style:normal;border-bottom:1px dotted var(--faint)}
+  pre.diff{
+    background:#0A0F1B;border:1px solid var(--grid);border-radius:8px;
+    padding:12px 14px;font-size:11px;line-height:1.65;overflow-x:auto;
+    margin-bottom:16px;
+  }
+  pre.diff .a{color:var(--added)} pre.diff .d{color:var(--blast)} pre.diff .c{color:var(--dim)}
+  .flags{list-style:none;display:flex;flex-direction:column;gap:8px;margin-top:6px}
+  .flags button{
+    all:unset;display:flex;gap:10px;align-items:baseline;cursor:pointer;
+    border:1px solid var(--grid);border-radius:8px;padding:9px 12px;width:100%;
+    font-family:var(--mono);font-size:11.5px;color:#C9CDD9;line-height:1.45;
+    transition:border-color .15s,background .15s;
+  }
+  .flags button:hover,.flags button:focus-visible{border-color:var(--faint);background:var(--panel2)}
+  .flags .n{color:var(--blast);font-weight:600;flex:none}
+  .flags .n.v{color:var(--violet)}
+  .overview-lede{font-family:var(--sans);font-size:13.5px;line-height:1.6;color:#C9CDD9;margin-bottom:18px}
+  .overview-lede code,.why code{
+    font-family:var(--mono);font-size:.92em;background:var(--panel2);
+    border-radius:4px;padding:1px 5px;color:var(--paper);
+  }
+  .back{
+    all:unset;cursor:pointer;font-size:10.5px;color:var(--faint);margin-bottom:14px;
+    display:inline-block;letter-spacing:.04em;
+  }
+  .back:hover,.back:focus-visible{color:var(--paper)}
+
+  /* ── intent strip ────────────────────── */
+  .intent{
+    border-top:1px solid var(--grid);padding:12px 18px 14px;
+    background:linear-gradient(0deg,#0C1220,#0D1321);
+  }
+  .intent .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .intent h3{
+    font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--faint);margin-right:6px;white-space:nowrap;
+  }
+  .chip{
+    all:unset;cursor:pointer;font-family:var(--mono);font-size:11px;
+    border:1px solid var(--grid);border-radius:20px;padding:6px 13px;
+    color:#C9CDD9;display:flex;align-items:center;gap:8px;white-space:nowrap;
+    transition:border-color .15s,background .15s;
+  }
+  .chip:hover,.chip:focus-visible{border-color:var(--faint)}
+  .chip.active{background:var(--panel2);border-color:var(--dim)}
+  .chip .mark{font-weight:600}
+  .chip.ok .mark{color:var(--added)}
+  .chip.miss .mark{color:var(--blast)}
+  .chip.orph .mark{color:var(--violet)}
+  .caption{font-size:10px;color:var(--faint);margin-top:9px;letter-spacing:.02em}
+
+  @media (max-width:960px){
+    main{flex-direction:column}
+    .graph-wrap{border-right:none;border-bottom:1px solid var(--grid)}
+    aside{max-width:none}
+    svg{min-height:380px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="wordmark">groundcheck</span>
+  <span class="tag">structural slice · <b>M1</b></span>
+  <span class="tag">intent · <b>M2 preview</b></span>
+  <span class="tag m3">render layer · M3 — not in this mock</span>
+  <span class="spacer"></span>
+  <span class="stat"><b>feat/wishlist</b> ← main</span>
+  <span class="stat">6 files · <span class="add">+148</span> <span class="del">−11</span></span>
+</header>
+
+<main>
+  <div class="graph-wrap">
+    <div class="hidden-note">slice: <b>10 nodes drawn</b> · 41 context nodes hidden</div>
+    <svg viewBox="0 0 1180 620" role="img" aria-label="Dependency slice of the wishlist pull request">
+      <defs>
+        <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
+          <circle cx="1.2" cy="1.2" r="1.2" fill="#1A2440"/>
+        </pattern>
+        <marker id="m-dim" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#2A3856"/>
+        </marker>
+        <marker id="m-hot" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#E9E6DC"/>
+        </marker>
+      </defs>
+      <rect width="1180" height="620" fill="url(#dots)"/>
+      <g id="rings"></g>
+      <g id="edges"></g>
+      <g id="nodes"></g>
+    </svg>
+    <div class="legend" aria-hidden="true">
+      <span class="k"><span class="dot" style="background:var(--added)"></span>added</span>
+      <span class="k"><span class="lseg dash" style="border-color:var(--blast)"></span>consumes type</span>
+      <span class="k"><span class="dot" style="background:var(--modified)"></span>modified</span>
+      <span class="k"><span class="lseg"></span>renders / calls</span>
+      <span class="k"><span class="dot" style="background:var(--blast);border-radius:50%"></span>blast radius</span>
+      <span class="k"><span class="lseg dots"></span>uses token</span>
+      <span class="k"><span class="dot" style="background:transparent;border:1px dashed var(--blast)"></span>epicenter rings</span>
+      <span class="k"><span class="lseg thin"></span>imports</span>
+    </div>
+  </div>
+
+  <aside id="panel" aria-live="polite"></aside>
+</main>
+
+<div class="intent">
+  <div class="row" id="chips">
+    <h3>intent · acceptance criteria</h3>
+  </div>
+  <div class="caption">mock output on an imaginary storefront repo · branch feat/wishlist · “groundcheck” is a placeholder name · click nodes, chips, or flags</div>
+</div>
+
+<script>
+const NW = 168, NH = 48;
+
+const nodes = [
+ {id:'product', label:'product.ts',        sub:'interface Product',  glyph:'{}', x:455, y:300, status:'modified', epicenter:true,
+  loc:'src/types/product.ts · 1 field added',
+  why:'The epicenter of this slice. The agent added one optional field to <em>Product</em>. Every dashed red edge you see is a file that consumes this interface — that is the computed blast radius, whether or not the diff touched it.',
+  diff:[['c','  export interface Product {'],['c','    id: string'],['c','    title: string'],['c','    price: Money'],['a','+   wishlisted?: boolean'],['c','  }']]},
+
+ {id:'api', label:'api/products.ts',       sub:'serializeProduct()', glyph:'≡',  x:205, y:170, status:'blast', risk:'high',
+  loc:'src/lib/api/products.ts · untouched in this range',
+  why:'<em>serializeProduct()</em> builds the API payload from <code>Product</code> — and it does <em>not</em> include the new <code>wishlisted</code> field. Wishlist state will silently fail to survive a round-trip. This is the highest-value place to spend attention first.',
+  diff:[['c','  // untouched — shown for grounding'],['c','  export const serializeProduct = (p: Product) => ({'],['c','    id: p.id, title: p.title,'],['c','    price: toMinorUnits(p.price),'],['d','    // p.wishlisted is never read here'],['c','  })']]},
+
+ {id:'cart', label:'CartItem.tsx',         sub:'component',          glyph:'<>', x:170, y:330, status:'blast', risk:'med',
+  loc:'src/components/CartItem.tsx · untouched in this range',
+  why:'Consumes <code>Product</code> via props. The new field is optional, so nothing breaks — but criterion 3 expects the cart to surface wishlist state, and <em>no change in this range touches this file</em>. Break or intent gap: your call, but the tool won’t let it pass silently.'},
+
+ {id:'search', label:'SearchResults.tsx',  sub:'route component',    glyph:'<>', x:230, y:480, status:'blast', risk:'low',
+  loc:'src/pages/SearchResults.tsx · untouched in this range',
+  why:'Consumes <code>Product[]</code> for result cards. Optional field, no reads of it, no expected behavior change. Drawn so the blast radius is honest — safe to skim past.'},
+
+ {id:'grid', label:'ProductGrid.tsx',      sub:'component',          glyph:'<>', x:470, y:520, status:'blast', risk:'low',
+  loc:'src/components/ProductGrid.tsx · untouched in this range',
+  why:'Renders <code>ProductCard</code>; the prop contract is unchanged since the new field is optional. Low risk — worth a glance only if toggling feels slow across a large grid.'},
+
+ {id:'card', label:'ProductCard.tsx',      sub:'component',          glyph:'<>', x:700, y:420, status:'modified',
+  loc:'src/components/ProductCard.tsx · +2 −0 · L38–L41',
+  why:'Now renders <em>WishlistButton</em> in the card footer. Small, well-scoped change — matches criterion 2 directly.',
+  diff:[['c','    <PriceTag value={product.price} />'],['a','+   <WishlistButton id={product.id} />'],['c','  </footer>']]},
+
+ {id:'btn', label:'WishlistButton.tsx',    sub:'component · new',    glyph:'<>', x:760, y:250, status:'added',
+  loc:'src/components/WishlistButton.tsx · +46 (new file)',
+  why:'New component. Calls <em>useWishlist</em>, styles via the new <code>accentRose</code> token. Note: <code>aria-pressed</code> is present — the agent did the accessible thing unprompted.',
+  diff:[['a','+ export function WishlistButton({ id }: Props) {'],['a','+   const { on, toggle } = useWishlist(id)'],['a','+   return ('],['a','+     <button aria-pressed={on} onClick={toggle}'],['a','+       className={on ? css.active : css.idle}>']]},
+
+ {id:'hook', label:'useWishlist.ts',       sub:'hook · new',         glyph:'fn', x:560, y:130, status:'added',
+  loc:'src/hooks/useWishlist.ts · +38 (new file)',
+  why:'New hook, localStorage-backed — this is what satisfies criterion 1 (persistence). Worth one deliberate look: the storage key and the SSR guard are the two classic failure points in exactly this pattern.',
+  diff:[['a','+ export function useWishlist(id: string) {'],['a','+   const [ids, setIds] = useLocalStore(\'wishlist\')'],['a','+   const on = ids.includes(id)'],['a','+   const toggle = () => setIds(on ? drop(ids,id) : [...ids,id])'],['a','+   return { on, toggle }'],['a','+ }']]},
+
+ {id:'tokens', label:'tokens.ts',          sub:'style tokens',       glyph:'::', x:985, y:150, status:'modified',
+  loc:'src/styles/tokens.ts · +1 −0',
+  why:'One token added, consumed only by <em>WishlistButton</em> so far. If a second consumer appears in a later range, this node grows its own little blast radius.',
+  diff:[['c','    accentSky:  \'#7FB4D9\','],['a','+   accentRose: \'#D97789\','] ]},
+
+ {id:'fmt', label:'format.ts',             sub:'lib · orphan?',      glyph:'≡',  x:990, y:500, status:'modified', orphan:true,
+  loc:'src/lib/format.ts · +9 −4',
+  why:'The agent rewrote <em>formatPrice()</em> from template string to <code>Intl.NumberFormat</code>. Probably an improvement — but it matches <em>no acceptance criterion</em>. This is the drive-by change the intent layer exists to catch: approve it or revert it, explicitly.',
+  diff:[['d','- export const formatPrice = (m) =>'],['d','-   `${m.cur} ${m.amount.toFixed(2)}`'],['a','+ export function formatPrice(m: Money) {'],['a','+   return new Intl.NumberFormat(locale, {'],['a','+     style: \'currency\', currency: m.cur'],['a','+   }).format(m.amount)']]}
+];
+
+const edges = [
+ {from:'api',   to:'product', type:'type'},
+ {from:'cart',  to:'product', type:'type'},
+ {from:'search',to:'product', type:'type'},
+ {from:'grid',  to:'product', type:'type'},
+ {from:'card',  to:'product', type:'type'},
+ {from:'hook',  to:'product', type:'type'},
+ {from:'btn',   to:'hook',    type:'calls'},
+ {from:'card',  to:'btn',     type:'renders'},
+ {from:'grid',  to:'card',    type:'renders'},
+ {from:'btn',   to:'tokens',  type:'token'},
+ {from:'card',  to:'fmt',     type:'imports'}
+];
+
+const criteria = [
+ {id:'c1', kind:'ok',   mark:'✓', label:'1 · persists across reloads',    nodes:['hook'],
+  note:'<b>Covered.</b> <code>useWishlist.ts</code> writes to localStorage. Verify the storage key and the SSR guard — the two usual failure points for this pattern.'},
+ {id:'c2', kind:'ok',   mark:'✓', label:'2 · toggle on every product card', nodes:['card','btn','grid'],
+  note:'<b>Covered.</b> <code>ProductCard</code> renders the new <code>WishlistButton</code>; <code>ProductGrid</code> passes it through unchanged. Render-layer screenshots would close this one visually in M3.'},
+ {id:'c3', kind:'miss', mark:'✗', label:'3 · wishlisted items in cart',     nodes:['cart'],
+  note:'<b>Uncovered.</b> No change in this range matches this criterion. <code>CartItem.tsx</code> consumes <code>Product</code> but was never touched — the agent skipped a requirement.'},
+ {id:'orph',kind:'orph',mark:'⚠', label:'orphan · format.ts rewrite',      nodes:['fmt'],
+  note:'<b>Orphaned change.</b> <code>formatPrice()</code> was refactored but matches no criterion. Not requested. Approve or revert — explicitly, not by accident.'}
+];
+
+const byId = Object.fromEntries(nodes.map(n=>[n.id,n]));
+const svgNS = 'http://www.w3.org/2000/svg';
+const $ = id => document.getElementById(id);
+
+/* rings around epicenter */
+(function(){
+  const e = nodes.find(n=>n.epicenter), g = $('rings');
+  [78,122,168].forEach((r,i)=>{
+    const c = document.createElementNS(svgNS,'circle');
+    c.setAttribute('cx',e.x); c.setAttribute('cy',e.y); c.setAttribute('r',r);
+    c.setAttribute('class','ring r'+(i+1)); c.setAttribute('stroke-width', 1.4);
+    g.appendChild(c);
+  });
+})();
+
+/* edges */
+const edgeEls = edges.map(ed=>{
+  const a = byId[ed.from], b = byId[ed.to];
+  const dx=b.x-a.x, dy=b.y-a.y, len=Math.hypot(dx,dy);
+  const pad = 0.5*Math.min(NW/Math.abs(dx/len||1e-9), NH/Math.abs(dy/len||1e-9));
+  const p2 = Math.min(pad, len/2)+6;
+  const x2 = b.x - dx/len*p2, y2 = b.y - dy/len*p2;
+  const p1 = Math.min(0.5*Math.min(NW/Math.abs(dx/len||1e-9), NH/Math.abs(dy/len||1e-9)), len/2);
+  const x1 = a.x + dx/len*p1, y1 = a.y + dy/len*p1;
+  const l = document.createElementNS(svgNS,'line');
+  l.setAttribute('x1',x1); l.setAttribute('y1',y1);
+  l.setAttribute('x2',x2); l.setAttribute('y2',y2);
+  l.setAttribute('class','edge '+ed.type);
+  l.setAttribute('marker-end','url(#m-dim)');
+  $('edges').appendChild(l);
+  return {el:l, ...ed};
+});
+
+/* nodes */
+nodes.forEach(n=>{
+  const g = document.createElementNS(svgNS,'g');
+  g.setAttribute('class','node '+n.status);
+  g.setAttribute('transform',`translate(${n.x-NW/2},${n.y-NH/2})`);
+  g.setAttribute('tabindex','0'); g.setAttribute('role','button');
+  g.setAttribute('aria-label',`${n.label}, ${n.status}${n.orphan?', orphan change':''}`);
+  g.dataset.id = n.id;
+  g.innerHTML = `
+    <rect class="body" width="${NW}" height="${NH}" rx="9"></rect>
+    <rect class="badge" x="10" y="13" width="24" height="22" rx="5"></rect>
+    <text class="glyph" x="22" y="28" text-anchor="middle">${n.glyph}</text>
+    <text class="name" x="44" y="21">${n.label}</text>
+    <text class="sub"  x="44" y="36">${n.sub}${n.risk?` · risk ${n.risk}`:''}</text>`;
+  const act = ()=>selectNode(n.id);
+  g.addEventListener('click',act);
+  g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();act();}});
+  g.addEventListener('mouseenter',()=>heatEdges(n.id,true));
+  g.addEventListener('mouseleave',()=>heatEdges(n.id,false));
+  $('nodes').appendChild(g);
+});
+
+function heatEdges(id,on){
+  edgeEls.forEach(e=>{
+    if(e.from===id||e.to===id){
+      e.el.classList.toggle('hot',on);
+      e.el.setAttribute('marker-end',on?'url(#m-hot)':'url(#m-dim)');
+    }
+  });
+}
+function clearState(){
+  document.querySelectorAll('.node').forEach(el=>el.classList.remove('selected','faded'));
+  document.querySelectorAll('.chip').forEach(el=>el.classList.remove('active'));
+  edgeEls.forEach(e=>{e.el.classList.remove('hot','mute');e.el.setAttribute('marker-end','url(#m-dim)');});
+}
+
+/* detail panel */
+const panel = $('panel');
+function diffHTML(d){
+  if(!d) return '';
+  return `<pre class="diff">${d.map(([k,t])=>`<span class="${k==='a'?'a':k==='d'?'d':'c'}">${t.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>`).join('\n')}</pre>`;
+}
+function selectNode(id){
+  clearState();
+  const n = byId[id];
+  document.querySelector(`.node[data-id="${id}"]`).classList.add('selected');
+  edgeEls.forEach(e=>{
+    const hit = e.from===id||e.to===id;
+    e.el.classList.toggle('hot',hit); e.el.classList.toggle('mute',!hit);
+    e.el.setAttribute('marker-end',hit?'url(#m-hot)':'url(#m-dim)');
+  });
+  panel.innerHTML = `
+    <button class="back" id="back">← back to slice overview</button>
+    <div class="file-head">
+      <span class="path">${n.label}</span>
+      <span class="pill ${n.status}">${n.status==='blast'?'blast radius':n.status}</span>
+      ${n.risk?`<span class="pill risk-${n.risk}">risk ${n.risk}</span>`:''}
+      ${n.orphan?`<span class="pill orphan">orphan</span>`:''}
+    </div>
+    <div class="loc">${n.loc}</div>
+    <p class="why">${n.why}</p>
+    ${diffHTML(n.diff)}`;
+  $('back').addEventListener('click',overview);
+}
+
+function activateChip(cid){
+  clearState();
+  const c = criteria.find(x=>x.id===cid);
+  document.querySelector(`.chip[data-id="${cid}"]`).classList.add('active');
+  document.querySelectorAll('.node').forEach(el=>{
+    if(!c.nodes.includes(el.dataset.id)) el.classList.add('faded');
+  });
+  edgeEls.forEach(e=>{
+    if(!(c.nodes.includes(e.from)&&c.nodes.includes(e.to))) e.el.classList.add('mute');
+  });
+  panel.innerHTML = `
+    <button class="back" id="back">← back to slice overview</button>
+    <h2>criterion</h2>
+    <div class="file-head"><span class="path">${c.label}</span></div>
+    <p class="why">${c.note}</p>`;
+  $('back').addEventListener('click',overview);
+}
+
+function overview(){
+  clearState();
+  panel.innerHTML = `
+    <h2>slice overview</h2>
+    <p class="overview-lede">
+      Built from <code>main..feat/wishlist</code>. 6 files changed → 10 nodes drawn,
+      41 context nodes hidden. Blast radius computed from the <code>Product</code>
+      interface, which gained one field in this range.
+    </p>
+    <h2>attention flags · 3</h2>
+    <ul class="flags">
+      <li><button data-go="node:api"><span class="n">01</span>
+        <span><b>api/products.ts</b> — serializer never reads <code>wishlisted</code>; state won’t survive the API boundary</span></button></li>
+      <li><button data-go="chip:c3"><span class="n">02</span>
+        <span><b>criterion 3 uncovered</b> — nothing in this range touches the cart</span></button></li>
+      <li><button data-go="chip:orph"><span class="n v">03</span>
+        <span><b>format.ts</b> — refactor matches no criterion (drive-by change)</span></button></li>
+    </ul>
+    <p class="why" style="margin-top:18px">
+      Everything else in this slice is either covered by a criterion or drawn only
+      for honesty. Suggested reading order: epicenter → flags → done.
+    </p>`;
+  panel.querySelectorAll('[data-go]').forEach(b=>{
+    b.addEventListener('click',()=>{
+      const [kind,id] = b.dataset.go.split(':');
+      kind==='node' ? selectNode(id) : activateChip(id);
+    });
+  });
+}
+
+/* intent chips */
+const chipRow = $('chips');
+criteria.forEach(c=>{
+  const b = document.createElement('button');
+  b.className = 'chip '+c.kind; b.dataset.id = c.id;
+  b.innerHTML = `<span class="mark">${c.mark}</span>${c.label}`;
+  b.addEventListener('click',()=>activateChip(c.id));
+  chipRow.appendChild(b);
+});
+
+/* click empty canvas → overview */
+document.querySelector('svg').addEventListener('click',e=>{
+  if(e.target.tagName==='rect'&&e.target.getAttribute('fill')==='url(#dots)') overview();
+});
+
+overview();
+</script>
+</body>
+</html>

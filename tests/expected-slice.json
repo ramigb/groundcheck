@@ -1,0 +1,473 @@
+{
+  "groundcheck": "0.6.0",
+  "generated": {
+    "at": "2026-07-26T00:00:00Z",
+    "repo": "storefront",
+    "range": "main..fixture/wishlist",
+    "headSha": "f17c953",
+    "baseSha": "e979706",
+    "tsconfig": "tsconfig.json",
+    "toolVersions": {
+      "node": "22.21.1",
+      "ts-morph": "24.0.0"
+    }
+  },
+  "epicenters": [
+    "types/product.ts#Product"
+  ],
+  "nodes": [
+    {
+      "id": "components/CartItem.tsx",
+      "file": "src/components/CartItem.tsx",
+      "kind": "component",
+      "status": "blast",
+      "spans": [],
+      "stats": {
+        "added": 0,
+        "removed": 0
+      },
+      "exportedSymbolsChanged": []
+    },
+    {
+      "id": "components/ProductCard.tsx#ProductCard",
+      "file": "src/components/ProductCard.tsx",
+      "symbol": "ProductCard",
+      "kind": "component",
+      "status": "modified",
+      "spans": [
+        {
+          "start": 17,
+          "end": 17
+        }
+      ],
+      "stats": {
+        "added": 2,
+        "removed": 0
+      },
+      "exportedSymbolsChanged": [
+        "ProductCard"
+      ],
+      "excerpt": [
+        {
+          "op": "ctx",
+          "text": "      <footer className=\"card-footer\">"
+        },
+        {
+          "op": "ctx",
+          "text": "        <PriceTag value={product.price} format={formatPrice} />"
+        },
+        {
+          "op": "add",
+          "text": "        <WishlistButton id={product.id} />"
+        },
+        {
+          "op": "ctx",
+          "text": "      </footer>"
+        },
+        {
+          "op": "ctx",
+          "text": "    </article>"
+        }
+      ]
+    },
+    {
+      "id": "components/ProductGrid.tsx",
+      "file": "src/components/ProductGrid.tsx",
+      "kind": "component",
+      "status": "blast",
+      "spans": [],
+      "stats": {
+        "added": 0,
+        "removed": 0
+      },
+      "exportedSymbolsChanged": []
+    },
+    {
+      "id": "components/WishlistButton.tsx#WishlistButton",
+      "file": "src/components/WishlistButton.tsx",
+      "symbol": "WishlistButton",
+      "kind": "component",
+      "status": "added",
+      "spans": [
+        {
+          "start": 8,
+          "end": 20
+        }
+      ],
+      "stats": {
+        "added": 20,
+        "removed": 0
+      },
+      "exportedSymbolsChanged": [
+        "WishlistButton"
+      ],
+      "excerpt": [
+        {
+          "op": "add",
+          "text": "import { useWishlist } from '../hooks/useWishlist'"
+        },
+        {
+          "op": "add",
+          "text": "import { tokens } from '../styles/tokens'"
+        },
+        {
+          "op": "add",
+          "text": ""
+        },
+        {
+          "op": "add",
+          "text": "type Props = {"
+        },
+        {
+          "op": "add",
+          "text": "  id: string"
+        },
+        {
+          "op": "add",
+          "text": "}"
+        },
+        {
+          "op": "add",
+          "text": ""
+        },
+        {
+          "op": "add",
+          "text": "export function WishlistButton({ id }: Props) {"
+        },
+        {
+          "op": "gap",
+          "text": "… 12 more diff lines (12 changed)"
+        }
+      ]
+    },
+    {
+      "id": "hooks/useWishlist.ts#useWishlist",
+      "file": "src/hooks/useWishlist.ts",
+      "symbol": "useWishlist",
+      "kind": "hook",
+      "status": "added",
+      "spans": [
+        {
+          "start": 6,
+          "end": 11
+        }
+      ],
+      "stats": {
+        "added": 11,
+        "removed": 0
+      },
+      "exportedSymbolsChanged": [
+        "useWishlist"
+      ],
+      "excerpt": [
+        {
+          "op": "add",
+          "text": "import type { Product } from '../types/product'"
+        },
+        {
+          "op": "add",
+          "text": "import { useLocalStore } from './useLocalStore'"
+        },
+        {
+          "op": "add",
+          "text": ""
+        },
+        {
+          "op": "add",
+          "text": "const KEY = 'wishlist'"
+        },
+        {
+          "op": "add",
+          "text": ""
+        },
+        {
+          "op": "add",
+          "text": "export function useWishlist(id: Product['id']) {"
+        },
+        {
+          "op": "add",
+          "text": "  const [ids, setIds] = useLocalStore(KEY)"
+        },
+        {
+          "op": "add",
+          "text": "  const on = ids.includes(id)"
+        },
+        {
+          "op": "gap",
+          "text": "… 3 more diff lines (3 changed)"
+        }
+      ]
+    },
+    {
+      "id": "lib/api/products.ts",
+      "file": "src/lib/api/products.ts",
+      "kind": "module",
+      "status": "blast",
+      "spans": [],
+      "stats": {
+        "added": 0,
+        "removed": 0
+      },
+      "exportedSymbolsChanged": []
+    },
+    {
+      "id": "lib/format.ts#formatPrice",
+      "file": "src/lib/format.ts",
+      "symbol": "formatPrice",
+      "kind": "module",
+      "status": "modified",
+      "spans": [
+        {
+          "start": 5,
+          "end": 10
+        }
+      ],
+      "stats": {
+        "added": 8,
+        "removed": 2
+      },
+      "exportedSymbolsChanged": [
+        "formatPrice"
+      ],
+      "excerpt": [
+        {
+          "op": "ctx",
+          "text": "import type { Money } from '../types/product'"
+        },
+        {
+          "op": "ctx",
+          "text": ""
+        },
+        {
+          "op": "del",
+          "text": "export const formatPrice = (m: Money) =>"
+        },
+        {
+          "op": "del",
+          "text": "  `${m.cur} ${m.amount.toFixed(2)}`"
+        },
+        {
+          "op": "add",
+          "text": "const locale = 'en-US'"
+        },
+        {
+          "op": "add",
+          "text": ""
+        },
+        {
+          "op": "add",
+          "text": "export function formatPrice(m: Money) {"
+        },
+        {
+          "op": "add",
+          "text": "  return new Intl.NumberFormat(locale, {"
+        },
+        {
+          "op": "gap",
+          "text": "… 4 more diff lines (4 changed)"
+        }
+      ]
+    },
+    {
+      "id": "pages/SearchResults.tsx",
+      "file": "src/pages/SearchResults.tsx",
+      "kind": "component",
+      "status": "blast",
+      "spans": [],
+      "stats": {
+        "added": 0,
+        "removed": 0
+      },
+      "exportedSymbolsChanged": []
+    },
+    {
+      "id": "styles/tokens.ts#tokens",
+      "file": "src/styles/tokens.ts",
+      "symbol": "tokens",
+      "kind": "token",
+      "status": "modified",
+      "spans": [
+        {
+          "start": 5,
+          "end": 5
+        }
+      ],
+      "stats": {
+        "added": 1,
+        "removed": 0
+      },
+      "exportedSymbolsChanged": [
+        "tokens"
+      ],
+      "excerpt": [
+        {
+          "op": "ctx",
+          "text": "  paper: '#E9E6DC',"
+        },
+        {
+          "op": "ctx",
+          "text": "  accentSky: '#7FB4D9',"
+        },
+        {
+          "op": "add",
+          "text": "  accentRose: '#D97789',"
+        },
+        {
+          "op": "ctx",
+          "text": "}"
+        }
+      ]
+    },
+    {
+      "id": "types/product.ts#Product",
+      "file": "src/types/product.ts",
+      "symbol": "Product",
+      "kind": "type",
+      "status": "modified",
+      "spans": [
+        {
+          "start": 10,
+          "end": 10
+        }
+      ],
+      "stats": {
+        "added": 1,
+        "removed": 0
+      },
+      "exportedSymbolsChanged": [
+        "Product"
+      ],
+      "excerpt": [
+        {
+          "op": "ctx",
+          "text": "  title: string"
+        },
+        {
+          "op": "ctx",
+          "text": "  price: Money"
+        },
+        {
+          "op": "add",
+          "text": "  wishlisted?: boolean"
+        },
+        {
+          "op": "ctx",
+          "text": "}"
+        }
+      ]
+    }
+  ],
+  "ungraphed": [],
+  "edges": [
+    {
+      "from": "components/CartItem.tsx",
+      "to": "types/product.ts#Product",
+      "type": "consumes-type",
+      "evidence": {
+        "file": "src/components/CartItem.tsx",
+        "line": 4
+      }
+    },
+    {
+      "from": "components/ProductCard.tsx#ProductCard",
+      "to": "components/WishlistButton.tsx#WishlistButton",
+      "type": "renders",
+      "evidence": {
+        "file": "src/components/ProductCard.tsx",
+        "line": 17
+      }
+    },
+    {
+      "from": "components/ProductCard.tsx#ProductCard",
+      "to": "lib/format.ts#formatPrice",
+      "type": "imports",
+      "evidence": {
+        "file": "src/components/ProductCard.tsx",
+        "line": 2
+      }
+    },
+    {
+      "from": "components/ProductCard.tsx#ProductCard",
+      "to": "types/product.ts#Product",
+      "type": "consumes-type",
+      "evidence": {
+        "file": "src/components/ProductCard.tsx",
+        "line": 7
+      }
+    },
+    {
+      "from": "components/ProductGrid.tsx",
+      "to": "components/ProductCard.tsx#ProductCard",
+      "type": "renders",
+      "evidence": {
+        "file": "src/components/ProductGrid.tsx",
+        "line": 12
+      }
+    },
+    {
+      "from": "components/ProductGrid.tsx",
+      "to": "types/product.ts#Product",
+      "type": "consumes-type",
+      "evidence": {
+        "file": "src/components/ProductGrid.tsx",
+        "line": 5
+      }
+    },
+    {
+      "from": "components/WishlistButton.tsx#WishlistButton",
+      "to": "hooks/useWishlist.ts#useWishlist",
+      "type": "calls",
+      "evidence": {
+        "file": "src/components/WishlistButton.tsx",
+        "line": 9
+      }
+    },
+    {
+      "from": "components/WishlistButton.tsx#WishlistButton",
+      "to": "styles/tokens.ts#tokens",
+      "type": "uses-token",
+      "evidence": {
+        "file": "src/components/WishlistButton.tsx",
+        "line": 15
+      }
+    },
+    {
+      "from": "hooks/useWishlist.ts#useWishlist",
+      "to": "types/product.ts#Product",
+      "type": "consumes-type",
+      "evidence": {
+        "file": "src/hooks/useWishlist.ts",
+        "line": 6
+      }
+    },
+    {
+      "from": "lib/api/products.ts",
+      "to": "types/product.ts#Product",
+      "type": "consumes-type",
+      "evidence": {
+        "file": "src/lib/api/products.ts",
+        "line": 3
+      }
+    },
+    {
+      "from": "pages/SearchResults.tsx",
+      "to": "types/product.ts#Product",
+      "type": "consumes-type",
+      "evidence": {
+        "file": "src/pages/SearchResults.tsx",
+        "line": 7
+      }
+    }
+  ],
+  "hidden": {
+    "count": 2,
+    "byKind": {
+      "component": 1,
+      "hook": 1
+    }
+  },
+  "excluded": {
+    "count": 0,
+    "files": []
+  }
+}

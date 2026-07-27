@@ -1,0 +1,27 @@
+{
+  "name": "groundcheck",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Visual review slices for agent-made changes: all changed files, TypeScript blast radius, deterministic rendering and validation.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ramigb/groundcheck.git"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build-slice": "node scripts/build-slice.ts",
+    "render-slice": "node scripts/render-slice.ts",
+    "validate-slice": "node scripts/validate-slice.ts",
+    "test": "bash tests/run.sh"
+  },
+  "dependencies": {
+    "ts-morph": "^28.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}
