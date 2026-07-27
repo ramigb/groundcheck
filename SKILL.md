@@ -78,10 +78,11 @@ entire product. If following them produces a worse-looking artifact, follow them
    - Monorepo: see § Monorepos below. The root `tsconfig.json` is often
      solution-style (`"files": []` plus `references`), which resolves zero files
      and exits 3.
-   - More than 20 nodes: the renderer refuses (DESIGN_CONTRACT § Layout). Re-run
-     with `--collapse dir`. Collapsed nodes keep their `members`, so notes, risk
-     and orphans may still address individual symbols by their uncollapsed id —
-     use that instead of writing directory-level prose about a specific symbol.
+   - More than 20 nodes: the renderer uses a deterministic expanded canvas and
+     shows a density warning (DESIGN_CONTRACT § Layout). Do not write
+     `annotations.layout` for these slices; computed placement keeps every node
+     and is independently checked by the validator. `--collapse dir` remains an
+     optional directory-level summary, not a prerequisite for rendering.
    - Read every entry in `ungraphed[]` and its excerpt. These are real changed
      files kept out of the dependency graph, not ignorable exclusions. They need
      no layout entry and cannot be named by node-keyed annotations.
@@ -104,8 +105,10 @@ entire product. If following them produces a worse-looking artifact, follow them
      data/behavior loss. Med = criterion-relevant but inert. Low = drawn for
      honesty; safe to skim.
    - **readingOrder[]** — epicenter → flags → remainder.
-   - **layout{}** — x,y per node, constraints in `references/DESIGN_CONTRACT.md`
-     § Layout. Narrative placement is yours; geometry is validated.
+   - **layout{}** — for slices with 20 or fewer nodes, x,y per node under the
+     constraints in `references/DESIGN_CONTRACT.md` § Layout. Narrative placement
+     is yours and geometry is validated. For larger slices, omit it or use `{}`;
+     the deterministic renderer supplies and the validator checks every position.
 4. Render:
    `node scripts/render-slice.ts --slice slice.json --annotations annotations.json --out review.html`
    Pass `--pr <n> [--pr-state open|merged|closed]` to `build-slice` when the
@@ -166,10 +169,10 @@ here updates the cart; criterion 3 expects it — verify").
 - `references/SLICE_FORMAT.md` — slice + annotations schemas, determinism rules.
   Read before writing `annotations.json` for the first time in a session.
 - `references/DESIGN_CONTRACT.md` — frozen visual system and layout constraints.
-  Read before writing `layout{}`. Never restyle; contract changes require a
-  version bump signed off by the human.
+  Read before writing `layout{}` for a small slice. Never restyle; contract
+  changes require a version bump signed off by the human.
 - `assets/shell-mock.png` — golden reference rendering for DESIGN_CONTRACT
-  v0.2.0. It remains the visual-language reference for v0.3.0.
+  v0.2.0. It remains the visual-language reference for v0.4.0.
 - `assets/reference-mock.html` — the superseded v0.1.0 golden. Kept for history
   only; it does not describe the current artifact. Where the two disagree, the PNG
   wins.

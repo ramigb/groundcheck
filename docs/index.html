@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d1321">
+  <meta name="description" content="groundcheck turns a git range into a self-contained, fabrication-proof visual review: dependency graph, blast radius, acceptance coverage, and attention flags.">
+  <meta property="og:title" content="groundcheck — See the change before you ship it">
+  <meta property="og:description" content="Visual, evidence-backed review slices for agent-made code changes.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="./assets/review-graph.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>groundcheck — See the change before you ship it</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wdth,wght@75..100,400..700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="noise" aria-hidden="true"></div>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="groundcheck home">
+      <span class="brand-mark" aria-hidden="true"><span></span></span>
+      <span>groundcheck</span>
+    </a>
+
+    <nav class="nav-links" aria-label="Main navigation">
+      <a href="#product">Product</a>
+      <a href="#proof">How it works</a>
+      <a href="#showcase">Artifact</a>
+    </nav>
+
+    <a class="header-cta" href="https://github.com/ramigb/groundcheck">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 .7a11.6 11.6 0 0 0-3.67 22.6c.58.1.79-.25.79-.56v-2.04c-3.23.7-3.91-1.37-3.91-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.77 2.72 1.26 3.38.96.1-.75.4-1.26.74-1.55-2.58-.29-5.29-1.29-5.29-5.73 0-1.27.45-2.3 1.2-3.11-.12-.29-.52-1.47.11-3.07 0 0 .98-.31 3.19 1.19a11.1 11.1 0 0 1 5.81 0c2.21-1.5 3.18-1.19 3.18-1.19.64 1.6.24 2.78.12 3.07.75.81 1.2 1.84 1.2 3.11 0 4.45-2.72 5.44-5.3 5.73.42.36.79 1.06.79 2.14v3.17c0 .31.21.67.8.56A11.6 11.6 0 0 0 12 .7Z"/></svg>
+      <span>View on GitHub</span>
+      <span class="arrow" aria-hidden="true">↗</span>
+    </a>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="hero-backdrop" aria-hidden="true">
+        <svg viewBox="0 0 1440 780" preserveAspectRatio="none">
+          <path d="M-80 610C194 530 280 230 548 311S872 624 1100 445s227-332 422-263"/>
+          <path d="M-120 681C199 587 329 311 548 372s359 276 585 113 225-284 409-240"/>
+          <circle cx="549" cy="340" r="92"/>
+          <circle cx="549" cy="340" r="146"/>
+        </svg>
+      </div>
+
+      <div class="hero-copy">
+        <p class="eyebrow reveal"><span class="pulse-dot"></span> Visual review for agent-made changes</p>
+        <h1 class="reveal">
+          <span>See the change.</span>
+          <span class="accent">Trust the ship.</span>
+        </h1>
+        <p class="hero-punchline reveal">Asked your agent to build a feature? <strong>See whether it was done—and exactly how.</strong></p>
+        <p class="hero-lede reveal">groundcheck turns any git range into a visual, evidence-backed review slice—so you can understand blast radius, intent coverage, and what needs attention <em>before</em> you merge.</p>
+
+        <div class="hero-actions reveal">
+          <a class="button button-primary" href="https://github.com/ramigb/groundcheck">
+            Get groundcheck
+            <span aria-hidden="true">↗</span>
+          </a>
+          <a class="button button-ghost" href="#showcase">
+            Explore the artifact
+            <span aria-hidden="true">↓</span>
+          </a>
+        </div>
+
+        <div class="hero-proof reveal" aria-label="Project facts">
+          <span><strong>1</strong> HTML artifact</span>
+          <span><strong>0</strong> runtime services</span>
+          <span><strong>100%</strong> traceable</span>
+        </div>
+      </div>
+
+      <div class="hero-visual reveal" data-tilt>
+        <div class="orbit orbit-one" aria-hidden="true"></div>
+        <div class="orbit orbit-two" aria-hidden="true"></div>
+        <div class="float-chip chip-facts">
+          <span class="chip-icon">✓</span>
+          <span><small>Validator</small>Artifact clean</span>
+        </div>
+        <div class="float-chip chip-radius">
+          <span class="chip-icon">◎</span>
+          <span><small>Blast radius</small>10 nodes mapped</span>
+        </div>
+        <div class="artifact-window">
+          <div class="window-bar">
+            <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+            <span>review.html</span>
+            <span class="verified"><i></i> verified</span>
+          </div>
+          <div class="screenshot-wrap">
+            <img src="./assets/review-graph.png" alt="groundcheck fixture artifact showing a dependency graph, review filters, acceptance criteria, and attention flags" width="1680" height="1050">
+            <div class="scan-line" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+
+      <a class="scroll-cue" href="#manifesto" aria-label="Scroll to learn more">
+        <span>Scroll to inspect</span>
+        <i aria-hidden="true"></i>
+      </a>
+    </section>
+
+    <section class="ticker" aria-label="Key capabilities">
+      <div class="ticker-track">
+        <span>Computed blast radius</span><i>✦</i>
+        <span>Every edge has evidence</span><i>✦</i>
+        <span>Acceptance coverage</span><i>✦</i>
+        <span>Fabrication-proof</span><i>✦</i>
+        <span>One portable HTML file</span><i>✦</i>
+        <span aria-hidden="true">Computed blast radius</span><i aria-hidden="true">✦</i>
+        <span aria-hidden="true">Every edge has evidence</span><i aria-hidden="true">✦</i>
+        <span aria-hidden="true">Acceptance coverage</span><i aria-hidden="true">✦</i>
+        <span aria-hidden="true">Fabrication-proof</span><i aria-hidden="true">✦</i>
+        <span aria-hidden="true">One portable HTML file</span><i aria-hidden="true">✦</i>
+      </div>
+    </section>
+
+    <section class="manifesto section-shell" id="manifesto">
+      <div class="section-index reveal">01 / WHY</div>
+      <div class="manifesto-copy">
+        <p class="kicker reveal">Code review has a new speed limit</p>
+        <h2 class="reveal">Agents can write a week of changes before your coffee gets cold. Your review surface should keep up.</h2>
+        <p class="manifesto-note reveal">groundcheck compresses a sprawling diff into a truthful, explorable map. Nothing quietly disappears. Nothing gets invented to make the story cleaner.</p>
+      </div>
+      <div class="manifesto-stamp reveal" aria-label="Ground truth, not vibes">
+        <svg viewBox="0 0 160 160" aria-hidden="true">
+          <defs><path id="stampPath" d="M80,80 m-58,0 a58,58 0 1,1 116,0 a58,58 0 1,1 -116,0"/></defs>
+          <text><textPath href="#stampPath">GROUND TRUTH • NOT VIBES • GROUND TRUTH • </textPath></text>
+          <circle cx="80" cy="80" r="31"/>
+          <path d="M66 80l9 9 20-22"/>
+        </svg>
+      </div>
+    </section>
+
+    <section class="features section-shell" id="product">
+      <div class="section-heading reveal">
+        <div>
+          <p class="kicker">Built for high-signal review</p>
+          <h2>One artifact.<br>Every angle.</h2>
+        </div>
+        <p>Open the exact view your brain needs—from system shape to line-level proof—without rebuilding context from tabs, logs, and agent narration.</p>
+      </div>
+
+      <div class="bento">
+        <article class="feature-card feature-graph reveal">
+          <div class="card-topline"><span>01</span><span>COMPUTED</span></div>
+          <div class="mini-graph" aria-hidden="true">
+            <svg viewBox="0 0 620 320">
+              <defs>
+                <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z"/></marker>
+              </defs>
+              <g class="graph-lines">
+                <path d="M118 102L280 79"/>
+                <path d="M280 79L473 125"/>
+                <path d="M118 102L254 232"/>
+                <path d="M254 232L473 125"/>
+                <path d="M473 125L512 245"/>
+              </g>
+              <g class="graph-rings">
+                <circle cx="280" cy="79" r="63"/>
+                <circle cx="280" cy="79" r="94"/>
+              </g>
+              <g class="graph-node blue" transform="translate(53 79)"><rect width="130" height="46" rx="8"/><circle cx="18" cy="23" r="5"/><text x="32" y="20">products.ts</text><text class="sub" x="32" y="33">type</text></g>
+              <g class="graph-node amber" transform="translate(215 56)"><rect width="130" height="46" rx="8"/><circle cx="18" cy="23" r="5"/><text x="32" y="20">Product.ts</text><text class="sub" x="32" y="33">epicenter</text></g>
+              <g class="graph-node green" transform="translate(408 102)"><rect width="130" height="46" rx="8"/><circle cx="18" cy="23" r="5"/><text x="32" y="20">Wishlist.tsx</text><text class="sub" x="32" y="33">component</text></g>
+              <g class="graph-node blue" transform="translate(189 209)"><rect width="130" height="46" rx="8"/><circle cx="18" cy="23" r="5"/><text x="32" y="20">ProductGrid</text><text class="sub" x="32" y="33">consumed</text></g>
+              <g class="graph-node violet" transform="translate(447 222)"><rect width="130" height="46" rx="8"/><circle cx="18" cy="23" r="5"/><text x="32" y="20">format.ts</text><text class="sub" x="32" y="33">unmatched?</text></g>
+            </svg>
+          </div>
+          <div class="feature-copy">
+            <h3>See the blast radius</h3>
+            <p>Follow changed symbols through TypeScript references. Every typed edge carries its own <code>file:line</code> evidence.</p>
+          </div>
+        </article>
+
+        <article class="feature-card feature-honest reveal">
+          <div class="card-topline"><span>02</span><span>HONEST</span></div>
+          <div class="truth-meter" aria-hidden="true">
+            <div class="meter-row"><span>In graph</span><strong data-count="10">10</strong></div>
+            <div class="meter-bar"><i></i></div>
+            <div class="meter-row dim"><span>Not shown</span><strong data-count="2">2</strong></div>
+          </div>
+          <div class="feature-copy">
+            <h3>Nothing hides off-canvas</h3>
+            <p>Changed files outside the graph stay visible. Scope gaps are surfaced as facts, never massaged away.</p>
+          </div>
+        </article>
+
+        <article class="feature-card feature-intent reveal">
+          <div class="card-topline"><span>03</span><span>INTENT</span></div>
+          <div class="criteria-list" aria-hidden="true">
+            <div><i class="pass">✓</i><span>Wishlist persists across reloads</span><b>Passed</b></div>
+            <div><i class="pass">✓</i><span>Toggle on every product card</span><b>Passed</b></div>
+            <div><i class="fail">×</i><span>Wishlisted items visible in cart</span><b>Failed</b></div>
+            <div><i class="warn">⌁</i><span>formatPrice</span><b>Unmatched</b></div>
+          </div>
+          <div class="feature-copy">
+            <h3>Measure the intent, not the activity</h3>
+            <p>Map acceptance criteria to the nodes that satisfy them—and expose changed code that matches no criterion at all.</p>
+          </div>
+        </article>
+
+        <article class="feature-card feature-portable reveal">
+          <div class="card-topline"><span>04</span><span>PORTABLE</span></div>
+          <div class="file-object" aria-hidden="true">
+            <div class="file-fold"></div>
+            <span>&lt;/&gt;</span>
+            <strong>review.html</strong>
+            <small>facts + judgment + provenance</small>
+          </div>
+          <div class="feature-copy">
+            <h3>Carry the whole review</h3>
+            <p>One deterministic, self-contained HTML file. No server, no network, no missing context when you share it.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="proof section-shell" id="proof">
+      <div class="section-index reveal">02 / PROOF</div>
+      <div class="proof-intro reveal">
+        <p class="kicker">Trust is an architecture</p>
+        <h2>Facts and judgment<br>never share a costume.</h2>
+        <p>groundcheck keeps computed structure and model interpretation in separate lanes, then validates the final artifact against both sources.</p>
+      </div>
+
+      <div class="proof-flow">
+        <article class="flow-step reveal">
+          <span class="step-no">01</span>
+          <div class="flow-icon code-icon" aria-hidden="true">&lt;/&gt;</div>
+          <p class="flow-label">GIT + TYPESCRIPT</p>
+          <h3>Compute</h3>
+          <p>Build the dependency slice from the repository—not the agent’s story about it.</p>
+          <div class="evidence-tag"><i></i> slice.json</div>
+        </article>
+        <div class="flow-arrow" aria-hidden="true"><span>evidence</span>→</div>
+        <article class="flow-step judgment reveal">
+          <span class="step-no">02</span>
+          <div class="flow-icon" aria-hidden="true">◎</div>
+          <p class="flow-label">MODEL JUDGMENT</p>
+          <h3>Interpret</h3>
+          <p>Add criteria matches, risk notes, and reading order in a visibly distinct register.</p>
+          <div class="evidence-tag"><i></i> annotations.json</div>
+        </article>
+        <div class="flow-arrow" aria-hidden="true"><span>guard</span>→</div>
+        <article class="flow-step verify reveal">
+          <span class="step-no">03</span>
+          <div class="flow-icon" aria-hidden="true">✓</div>
+          <p class="flow-label">MACHINE CHECK</p>
+          <h3>Verify</h3>
+          <p>Diff the rendered artifact back against its inputs. Invented or dropped facts fail hard.</p>
+          <div class="evidence-tag"><i></i> exit 0 · clean</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="showcase" id="showcase">
+      <div class="section-shell">
+        <div class="section-heading showcase-heading reveal">
+          <div>
+            <p class="kicker">The artifact is the product</p>
+            <h2>Dense when you need it.<br>Clear when you don’t.</h2>
+          </div>
+          <p>These are real screenshots generated from the repository’s fixture tests—not a painted mockup.</p>
+        </div>
+
+        <div class="showcase-tabs reveal" role="tablist" aria-label="Artifact views">
+          <button type="button" role="tab" aria-selected="true" aria-controls="panel-graph" id="tab-graph" data-view="graph">
+            <span>01</span> Symbol graph
+          </button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="panel-collapsed" id="tab-collapsed" data-view="collapsed" tabindex="-1">
+            <span>02</span> Collapsed directories
+          </button>
+        </div>
+
+        <div class="showcase-stage reveal" data-tilt>
+          <div class="stage-glow" aria-hidden="true"></div>
+          <div class="artifact-window showcase-window" id="panel-graph" role="tabpanel" aria-labelledby="tab-graph">
+            <div class="window-bar">
+              <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+              <span>storefront / main..fixture/wishlist</span>
+              <span class="verified"><i></i> fixture verified</span>
+            </div>
+            <img src="./assets/review-graph.png" alt="Full symbol-level graph view from the groundcheck storefront fixture test" width="1680" height="1050">
+          </div>
+          <div class="artifact-window showcase-window" id="panel-collapsed" role="tabpanel" aria-labelledby="tab-collapsed" hidden>
+            <div class="window-bar">
+              <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+              <span>storefront / collapsed directory mode</span>
+              <span class="verified"><i></i> fixture verified</span>
+            </div>
+            <img src="./assets/review-collapsed.png" alt="Collapsed directory graph view from the groundcheck storefront fixture test" width="1680" height="1050">
+          </div>
+        </div>
+
+        <div class="showcase-caption reveal">
+          <span>REAL FIXTURE · REAL RANGE · REAL EVIDENCE</span>
+          <p>Pan the graph. Filter by status. Inspect diffs. Jump from flags to evidence. Save your view.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="details section-shell">
+      <div class="detail-row reveal">
+        <span class="detail-num">01</span>
+        <h3>Every changed file stays visible.</h3>
+        <p>TypeScript, CSS, config, docs—if it changed, it gets a row and a diff excerpt.</p>
+        <span class="detail-mark" aria-hidden="true">+</span>
+      </div>
+      <div class="detail-row reveal">
+        <span class="detail-num">02</span>
+        <h3>Filters fade. They never erase.</h3>
+        <p>Keep the full shape of the system while focusing attention on what matters now.</p>
+        <span class="detail-mark" aria-hidden="true">+</span>
+      </div>
+      <div class="detail-row reveal">
+        <span class="detail-num">03</span>
+        <h3>Deterministic by design.</h3>
+        <p>Same range, same artifact—byte-identical apart from explicit generation metadata.</p>
+        <span class="detail-mark" aria-hidden="true">+</span>
+      </div>
+      <div class="detail-row reveal">
+        <span class="detail-num">04</span>
+        <h3>Agent-agnostic from day one.</h3>
+        <p>Use it anywhere your coding agent can read files, write files, and run shell commands.</p>
+        <span class="detail-mark" aria-hidden="true">+</span>
+      </div>
+    </section>
+
+    <section class="cta-section section-shell">
+      <div class="cta-orbit orbit-one" aria-hidden="true"></div>
+      <div class="cta-orbit orbit-two" aria-hidden="true"></div>
+      <p class="kicker reveal">Your next change deserves a map</p>
+      <h2 class="reveal">Stop reviewing<br><span>in the dark.</span></h2>
+      <p class="reveal">Point groundcheck at a branch. Get the whole truth in one file.</p>
+      <div class="command-box reveal">
+        <code><span>$</span> groundcheck main..feat/wishlist</code>
+        <button type="button" data-copy="groundcheck main..feat/wishlist" aria-label="Copy example command">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-3M5 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z"/></svg>
+          <span>Copy</span>
+        </button>
+      </div>
+      <a class="button button-primary reveal" href="https://github.com/ramigb/groundcheck">
+        Inspect the repository <span aria-hidden="true">↗</span>
+      </a>
+    </section>
+  </main>
+
+  <footer class="site-footer section-shell">
+    <a class="brand" href="#top" aria-label="Back to top">
+      <span class="brand-mark" aria-hidden="true"><span></span></span>
+      <span>groundcheck</span>
+    </a>
+    <p>Built for humans reviewing at machine speed.</p>
+    <div>
+      <a href="https://github.com/ramigb/groundcheck">GitHub ↗</a>
+      <a href="https://github.com/ramigb/groundcheck/blob/main/LICENSE">MIT License ↗</a>
+    </div>
+  </footer>
+
+  <script src="./script.js"></script>
+</body>
+</html>

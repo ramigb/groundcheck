@@ -399,6 +399,16 @@ t_collapse() {
   fi
 }
 
+t_large() {
+  echo "large-slice automatic layout:"
+  local out
+  if out=$(node "$ROOT/tests/check-large-layout.ts" 2>&1); then
+    ok "$out"
+  else
+    bad "$out"
+  fi
+}
+
 # The contract's interaction clauses (view switching, fade-not-remove, keyboard,
 # saved view) cannot be checked by reading markup, so they are driven in a real
 # browser. Skips cleanly when no browser is installed; never silently.
@@ -431,9 +441,10 @@ main() {
     worktree)    t_worktree ;;
     ungraphed)   t_ungraphed ;;
     collapse)    t_collapse ;;
+    large)       t_large ;;
     interaction) t_interaction ;;
-    all)         t_determinism; t_fixture; t_exitcodes; t_render; t_mutations; t_tsconfig; t_worktree; t_ungraphed; t_collapse; t_interaction ;;
-    *) echo "usage: run.sh [determinism|fixture|exitcodes|render|mutations|tsconfig|worktree|ungraphed|collapse|interaction|all]"; exit 2 ;;
+    all)         t_determinism; t_fixture; t_exitcodes; t_render; t_mutations; t_tsconfig; t_worktree; t_ungraphed; t_collapse; t_large; t_interaction ;;
+    *) echo "usage: run.sh [determinism|fixture|exitcodes|render|mutations|tsconfig|worktree|ungraphed|collapse|large|interaction|all]"; exit 2 ;;
   esac
   echo "$pass passed, $fail failed"
   [ "$fail" -eq 0 ]

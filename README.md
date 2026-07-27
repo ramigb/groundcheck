@@ -1,5 +1,7 @@
 # groundcheck
 
+> **Asked your agent to build a feature? See whether it was done—and exactly how.**
+
 An agent-agnostic skill that turns a git range into a single self-contained HTML
 review artifact: the diff-scoped dependency graph with computed blast radius, an
 acceptance-criteria coverage map, and a short list of attention flags. It works
@@ -17,6 +19,9 @@ dangling references before you ever see it.
 - **Computed blast radius.** Changed symbols are followed through the TypeScript
   type checker's reference search (`--depth`, default 1) to the nodes that
   consume them. Every edge carries `file:line` evidence.
+- **Large slices do not fail closed.** Above 20 graph nodes the artifact switches
+  to a deterministic expanded canvas, keeps every node and edge, and shows a
+  density warning. Directory collapse remains available as an optional summary.
 - **Every changed file stays visible.** CSS, JSON, Markdown, configuration,
   declarations, and other files outside the dependency graph appear as
   `not graphed` rows with status, stats, spans, and a selectable textual diff
@@ -101,7 +106,7 @@ node scripts/validate-slice.ts --artifact review.html --slice slice.json --annot
 | Situation | Flag |
 |---|---|
 | Uncommitted work (0 commits ahead) | `--range <base>.. --worktree` |
-| More than 20 nodes (renderer refuses) | `--collapse dir` |
+| Prefer a directory-level summary for a dense graph | `--collapse dir` |
 | Monorepo / cross-package diff | `--tsconfig <one synthetic config>` (see SKILL.md § Monorepos) |
 | Non-default token or route globs | `--tokens <glob>` `--routes <glob>` (repeatable) |
 | Deeper blast radius | `--depth <n>` |
@@ -119,8 +124,8 @@ inactive and orphan detection is off. Criteria are never invented.
 |---|---|
 | `SKILL.md` | The portable skill instructions: trigger conditions, provenance rules, workflow, and monorepo handling. What the coding agent loads and follows. |
 | `references/SLICE_FORMAT.md` | Schemas for `slice.json` and `annotations.json`, plus determinism rules. The contract between scripts and model. Read before writing annotations. |
-| `references/DESIGN_CONTRACT.md` | Frozen visual system: palette, panel structure, layout constraints. Read before writing `layout{}`. Changes need a version bump and human sign-off. |
-| `assets/shell-mock.png` | Golden visual-language reference from DESIGN_CONTRACT v0.2.0, retained by v0.3.0. |
+| `references/DESIGN_CONTRACT.md` | Frozen visual system: palette, panel structure, layout constraints. Read before writing small-slice `layout{}`. Changes need a version bump and human sign-off. |
+| `assets/shell-mock.png` | Golden visual-language reference from DESIGN_CONTRACT v0.2.0, retained by v0.4.0. |
 | `assets/reference-mock.html` | Superseded v0.1.0 golden. Kept for history; it no longer describes the artifact. |
 
 ### The scripts
@@ -128,14 +133,15 @@ inactive and orphan detection is off. Criteria are never invented.
 | File | Role |
 |---|---|
 | `scripts/build-slice.ts` | Facts. Reads git + the TS type checker via ts-morph, emits `slice.json`: nodes, ungraphed changed files, edges, statuses, blast depth, diff spans and excerpts. No judgment, no prose, no model calls. Deterministic apart from the `generated` block. Exit 2 = empty/invalid range, 3 = project load failure. |
-| `scripts/render-slice.ts` | The only writer of HTML. Takes `slice.json` + `annotations.json`, emits one self-contained `review.html` (app shell per DESIGN_CONTRACT v0.3.0) with both JSON files embedded. Refuses over 20 graph nodes. |
+| `scripts/layout-slice.ts` | Shared deterministic layout policy. Preserves model-authored composition for small slices and expands large slices onto a stable computed canvas. |
+| `scripts/render-slice.ts` | The only writer of HTML. Takes `slice.json` + `annotations.json`, emits one self-contained `review.html` (app shell per DESIGN_CONTRACT v0.4.0) with both JSON files embedded. |
 | `scripts/validate-slice.ts` | The guard. Diffs the rendered artifact against the slice: fabricated or missing nodes, edges, and ungraphed files; status/kind drift; dangling annotation ids; layout constraints; palette and register checks. Exit 0 clean, 1 violations, 2 usage error. Must exit 0 before anything is presented. |
 
 ### The tests
 
 | File | Role |
 |---|---|
-| `tests/run.sh` | Harness: `bash tests/run.sh [determinism\|fixture\|exitcodes\|render\|mutations\|tsconfig\|worktree\|ungraphed\|collapse\|all]`. |
+| `tests/run.sh` | Harness: `bash tests/run.sh [determinism\|fixture\|exitcodes\|render\|mutations\|tsconfig\|worktree\|ungraphed\|collapse\|large\|all]`. |
 | `tests/mutations/apply.ts` | Seeds known corruptions into a clean artifact so the validator can be tested for false passes. Each mutant is named for the check that must catch it. |
 | `tests/check-slice-shape.ts` | Structural self-check of a `slice.json` against SLICE_FORMAT. |
 | `tests/expected-slice.json`, `tests/golden/*.html` | Fixture expectations. |
@@ -159,15 +165,17 @@ that shades the truth.
   no error — it just yields no edge, understating the blast radius silently.
   Cross-package diffs need a hand-written synthetic config. Scope mistakes are
   visible (`excluded.files` + badge) but you have to act on them.
-- **20 drawn nodes maximum.** Past that the renderer refuses; `--collapse dir`
-  trades symbol-level nodes for directory meta-nodes (members are still listed in
-  the panel, but not drawn or laid out).
+- **Large graphs become dense.** They render on a deterministic expanded canvas
+  and remain fully searchable, but the fitted overview can become visually busy.
+  The artifact warns at that point; `--collapse dir` trades symbol-level drawing
+  for directory meta-nodes when a summary is more useful.
 - **Static references only.** Dynamic imports, string-keyed lookups, DI
   containers, and runtime wiring produce no edges. The blast radius is a lower
   bound, never an upper one.
-- **Layout is model-authored.** `annotations.json` supplies x,y per node; the
-  validator only checks constraints. There is no auto-layout, so a bad narrative
-  placement is a valid artifact.
+- **Layout has two modes.** Up to 20 nodes, `annotations.json` supplies x,y and
+  the validator checks the established narrative geometry. Above 20, placement
+  is deterministic and computed; this favors completeness and stable inspection
+  over a hand-crafted visual narrative.
 - **Criteria matching is unverified judgment.** The UI labels it "model-matched"
   because that is all it is. A covered chip means a model saw a plausible match,
   not that the criterion is satisfied.

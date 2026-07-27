@@ -131,9 +131,10 @@ discloses that dependency analysis is incomplete.
 
 ### Collapsed nodes — `members` (added in 0.2.0)
 
-`--collapse dir` replaces per-symbol nodes with one meta-node per directory so a
-large diff fits the 20-node render cap. Collapsing must not destroy the facts it
-groups, so a meta-node carries them:
+`--collapse dir` replaces per-symbol nodes with one meta-node per directory when
+a reviewer prefers a directory-level summary of a dense graph. It is optional:
+large symbol graphs render on an automatically expanded canvas. Collapsing must
+not destroy the facts it groups, so a meta-node carries them:
 
 ```jsonc
 {
@@ -220,14 +221,16 @@ target and a CI gate, not a style note.
   "notes": { "lib/api/products.ts": "Highest-value place to look first. ..." },
   "risk":  { "lib/api/products.ts": "high" },
   "readingOrder": ["types/product.ts#Product", "lib/api/products.ts", "..."],
-  "layout": { "types/product.ts#Product": { "x": 455, "y": 300 } }
+  "layout": { "types/product.ts#Product": { "x": 455, "y": 300 } } // {} for >20 nodes
 }
 ```
 
 Hard constraints (validator-enforced): every referenced node id exists in
-`slice.json`; `for.headSha` matches; `layout` covers every node exactly once and
-satisfies the geometry rules in DESIGN_CONTRACT § Layout; `flags` ≤ 5; `criteria`
-present only when a criteria source exists; `orphans` ⊆ changed nodes.
+`slice.json`; `for.headSha` matches; on slices with 20 or fewer nodes, `layout`
+covers every node exactly once and satisfies the geometry rules in
+DESIGN_CONTRACT § Layout; on larger slices it is ignored and may be `{}` or
+omitted because placement is deterministic and validated; `flags` ≤ 5;
+`criteria` present only when a criteria source exists; `orphans` ⊆ changed nodes.
 
 An orphan is *defined* as a changed node mapped to no criterion, so the validator
 enforces the equality, not just the subset: a changed node that is neither mapped

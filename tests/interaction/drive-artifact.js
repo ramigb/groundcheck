@@ -1,5 +1,5 @@
 // drive-artifact.js — drives a rendered artifact in headless Chrome and asserts
-// the DESIGN_CONTRACT v0.3.0 interaction clauses. Every expectation is derived
+// the DESIGN_CONTRACT v0.4.0 interaction clauses. Every expectation is derived
 // from the artifact's own embedded slice/annotations, so this runs against any
 // artifact, not just the storefront fixture.
 //

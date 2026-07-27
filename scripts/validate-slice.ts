@@ -10,17 +10,21 @@
 // need the raw text anyway.
 import { readFileSync } from 'node:fs'
 import { parseArgs } from 'node:util'
+import {
+  LARGE_FILE_WARNING_THRESHOLD,
+  MANUAL_LAYOUT_THRESHOLD,
+  NODE_BOX,
+  resolveGraphLayout,
+} from './layout-slice.ts'
 
-const CANVAS = { width: 1180, height: 620 }
-const NODE = { width: 168, height: 48 }
+const NODE = NODE_BOX
 const MARGIN = 14
 const MIN_GAP = 24
-const MAX_NODES = 20
 const MAX_FLAGS = 5
 const EPICENTER_WINDOW = { x: [380, 500], y: [260, 340] }
 const MIN_EPICENTER_SEPARATION = 200
 
-// DESIGN_CONTRACT v0.3.0 § Palette. `blast` was retired in v0.2.0: blast nodes render in
+// DESIGN_CONTRACT v0.4.0 § Palette. `blast` was retired in v0.2.0: blast nodes render in
 // `consumed` and `deleted` owns the red, so a surviving `--blast` is a defect.
 const PALETTE_TOKENS = [
   'ink', 'panel', 'panel2', 'grid', 'line', 'paper', 'dim', 'faint',
@@ -208,7 +212,7 @@ for (const [where, ids] of [
 // ...but layout and criteria matching must name drawn nodes: one positions a
 // rect, the other drives chip isolation, and neither can act on a member.
 for (const [where, ids] of [
-  ['layout', Object.keys(annotations.layout ?? {})],
+  ...(sliceNodes.length <= MANUAL_LAYOUT_THRESHOLD ? [['layout', Object.keys(annotations.layout ?? {})] as [string, string[]]] : []),
   ...criteria.map((criterion, index): [string, string[]] => [`criteria[${index}].nodes`, criterion.nodes ?? []]),
 ] as [string, string[]][]) {
   for (const id of ids) {
@@ -270,21 +274,47 @@ for (const [id, level] of Object.entries(annotations.risk ?? {})) {
 }
 
 // ── 4. layout geometry, on the rendered positions ─────────────────────────
-if (renderedNodes.length > MAX_NODES) violation('layout-count', 'nodes', `${renderedNodes.length} nodes exceeds the cap of ${MAX_NODES}`)
+const annotatedLayout: Record<string, { x: number; y: number }> = annotations.layout ?? {}
+const graphLayout = resolveGraphLayout(sliceNodes, slice.edges ?? [], slice.epicenters ?? [], annotatedLayout)
+const expectedLayout = graphLayout.positions
+const CANVAS = graphLayout.canvas
+const canvasTag = /<svg id="canvas"[^>]*>/.exec(artifact)?.[0]
+if (!canvasTag) {
+  violation('layout-canvas', 'canvas', 'graph SVG is missing')
+} else {
+  const mode = attribute(canvasTag, 'data-layout-mode')
+  const width = Number(attribute(canvasTag, 'data-canvas-width'))
+  const height = Number(attribute(canvasTag, 'data-canvas-height'))
+  const viewBox = attribute(canvasTag, 'viewBox')
+  if (mode !== graphLayout.mode) violation('layout-canvas', 'canvas', `layout mode "${mode}" != expected "${graphLayout.mode}"`)
+  if (width !== CANVAS.width || height !== CANVAS.height)
+    violation('layout-canvas', 'canvas', `canvas ${width}x${height} != expected ${CANVAS.width}x${CANVAS.height}`)
+  if (viewBox !== `0 0 ${CANVAS.width} ${CANVAS.height}`)
+    violation('layout-canvas', 'canvas', `viewBox "${viewBox}" != expected "0 0 ${CANVAS.width} ${CANVAS.height}"`)
+}
 
-const layout: Record<string, { x: number; y: number }> = annotations.layout ?? {}
-for (const id of Object.keys(layout)) {
-  if (!renderedById.has(id) && sliceNodeById.has(id)) violation('layout-unused', id, 'layout entry for a node that is not rendered')
+if (graphLayout.mode === 'manual') {
+  for (const id of Object.keys(annotatedLayout)) {
+    if (!renderedById.has(id) && sliceNodeById.has(id)) violation('layout-unused', id, 'layout entry for a node that is not rendered')
+  }
 }
 for (const node of renderedNodes) {
-  const declared = layout[node.id]
-  if (!declared) {
-    violation('layout-missing', node.id, 'rendered node has no annotations.layout entry')
+  const expected = expectedLayout[node.id]
+  if (!expected) {
+    violation(
+      'layout-missing',
+      node.id,
+      graphLayout.mode === 'manual' ? 'rendered node has no annotations.layout entry' : 'automatic layout produced no position',
+    )
     continue
   }
-  if (declared.x !== node.x || declared.y !== node.y)
-    violation('layout-drift', node.id, `rendered at (${node.x}, ${node.y}) but annotations.layout says (${declared.x}, ${declared.y})`)
-  const expectedTransform = `translate(${declared.x - NODE.width / 2},${declared.y - NODE.height / 2})`
+  if (expected.x !== node.x || expected.y !== node.y)
+    violation(
+      'layout-drift',
+      node.id,
+      `rendered at (${node.x}, ${node.y}) but ${graphLayout.mode} layout expects (${expected.x}, ${expected.y})`,
+    )
+  const expectedTransform = `translate(${expected.x - NODE.width / 2},${expected.y - NODE.height / 2})`
   if (node.transform !== expectedTransform)
     violation('layout-drift', node.id, `transform "${node.transform}" does not match layout position (expected "${expectedTransform}")`)
 }
@@ -300,14 +330,21 @@ for (const node of renderedNodes) {
   if (box.left < MARGIN || box.top < MARGIN || box.right > CANVAS.width - MARGIN || box.bottom > CANVAS.height - MARGIN)
     violation('layout-bounds', node.id, `rect (${box.left},${box.top})-(${box.right},${box.bottom}) breaks the ${MARGIN}px canvas margin`)
 }
-for (let i = 0; i < renderedNodes.length; i++) {
-  for (let j = i + 1; j < renderedNodes.length; j++) {
-    const a = rect(renderedNodes[i])
-    const b = rect(renderedNodes[j])
+// Sweep left-to-right. Once the horizontal gap reaches MIN_GAP, every later
+// rect is also safe from `a`; this keeps large-slice validation close to O(n)
+// for the deterministic grid instead of comparing every possible pair.
+const placedRects = renderedNodes
+  .map((node) => ({ node, box: rect(node) }))
+  .sort((a, b) => a.box.left - b.box.left || a.box.top - b.box.top || (a.node.id < b.node.id ? -1 : a.node.id > b.node.id ? 1 : 0))
+for (let i = 0; i < placedRects.length; i++) {
+  for (let j = i + 1; j < placedRects.length; j++) {
+    const a = placedRects[i].box
+    const b = placedRects[j].box
+    if (b.left - a.right >= MIN_GAP) break
     const gapX = Math.max(a.left - b.right, b.left - a.right)
     const gapY = Math.max(a.top - b.bottom, b.top - a.bottom)
     const gap = Math.max(gapX, gapY)
-    const pair = `${renderedNodes[i].id} / ${renderedNodes[j].id}`
+    const pair = `${placedRects[i].node.id} / ${placedRects[j].node.id}`
     if (gapX < 0 && gapY < 0) violation('layout-overlap', pair, `node rects overlap by ${Math.abs(Math.max(gapX, gapY))}px`)
     else if (gap < MIN_GAP) violation('layout-gap', pair, `edge-to-edge gap ${gap}px is under the ${MIN_GAP}px minimum`)
   }
@@ -315,7 +352,7 @@ for (let i = 0; i < renderedNodes.length; i++) {
 
 const epicenters: string[] = slice.epicenters ?? []
 const placedEpicenters = epicenters.filter((id) => renderedById.has(id))
-if (placedEpicenters.length) {
+if (placedEpicenters.length && graphLayout.mode === 'manual') {
   const primary = renderedById.get(placedEpicenters[0])!
   const inWindow =
     primary.x >= EPICENTER_WINDOW.x[0] && primary.x <= EPICENTER_WINDOW.x[1] && primary.y >= EPICENTER_WINDOW.y[0] && primary.y <= EPICENTER_WINDOW.y[1]
@@ -335,6 +372,13 @@ if (placedEpicenters.length) {
 const ringCount = (artifact.match(/class="ring r\d"/g) ?? []).length
 if (placedEpicenters.length && ringCount !== 3 * placedEpicenters.length)
   violation('design-rings', 'rings', `${ringCount} ring circles for ${placedEpicenters.length} epicenter(s); expected ${3 * placedEpicenters.length}`)
+const changedFileCount = new Set([
+  ...sliceNodes.flatMap((node) => node.members ?? [node]).filter((node) => CHANGED_STATUSES.includes(node.status)).map((node) => node.file),
+  ...(slice.ungraphed ?? []).map((file: any) => file.file),
+]).size
+const needsLargeSliceWarning = sliceNodes.length > MANUAL_LAYOUT_THRESHOLD || changedFileCount > LARGE_FILE_WARNING_THRESHOLD
+if (needsLargeSliceWarning && !/class="large-slice-warning"/.test(artifact))
+  violation('design-large-slice', 'warning', 'large slice warning is missing')
 
 // ── 5. design spot-checks ─────────────────────────────────────────────────
 for (const token of PALETTE_TOKENS) {

@@ -1,17 +1,21 @@
 // render-slice.ts — the only writer of the review artifact.
 // Consumes slice.json (facts) + annotations.json (judgment), emits one
-// self-contained HTML file per references/DESIGN_CONTRACT.md v0.3.0.
+// self-contained HTML file per references/DESIGN_CONTRACT.md v0.4.0.
 //
 // Usage:
 //   node scripts/render-slice.ts --slice slice.json --annotations annotations.json --out review.html
 //
-// Exit codes: 0 success · 2 unusable inputs (bad JSON, missing layout, > 20 nodes).
+// Exit codes: 0 success · 2 unusable inputs (bad JSON or invalid small-slice layout).
 import { readFileSync, writeFileSync } from 'node:fs'
 import { parseArgs } from 'node:util'
+import {
+  LARGE_FILE_WARNING_THRESHOLD,
+  MANUAL_LAYOUT_THRESHOLD,
+  NODE_BOX,
+  resolveGraphLayout,
+} from './layout-slice.ts'
 
-const CANVAS = { width: 1180, height: 620 }
-const NODE = { width: 168, height: 48 }
-const MAX_NODES = 20
+const NODE = NODE_BOX
 const RING_RADII = [78, 122, 168]
 const CHANGED_STATUSES = ['added', 'modified', 'deleted']
 
@@ -117,12 +121,14 @@ try {
 }
 
 if (!slice.groundcheck?.startsWith('0.')) die(2, `unknown slice major version "${slice.groundcheck}"`)
-if (slice.nodes.length > MAX_NODES)
-  die(2, `${slice.nodes.length} nodes exceeds the ${MAX_NODES}-node cap in DESIGN_CONTRACT § Layout; re-run build-slice with --collapse dir`)
-
-const layout: Record<string, { x: number; y: number }> = annotations.layout ?? {}
-const missingLayout = slice.nodes.filter((node) => !layout[node.id]).map((node) => node.id)
-if (missingLayout.length) die(2, `annotations.layout is missing ${missingLayout.length} node(s): ${missingLayout.join(', ')}`)
+const annotatedLayout: Record<string, { x: number; y: number }> = annotations.layout ?? {}
+const graphLayout = resolveGraphLayout(slice.nodes, slice.edges ?? [], slice.epicenters ?? [], annotatedLayout)
+const layout = graphLayout.positions
+const CANVAS = graphLayout.canvas
+if (graphLayout.mode === 'manual') {
+  const missingLayout = slice.nodes.filter((node) => !layout[node.id]).map((node) => node.id)
+  if (missingLayout.length) die(2, `annotations.layout is missing ${missingLayout.length} node(s): ${missingLayout.join(', ')}`)
+}
 
 const escapeHtml = (value: unknown) =>
   String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -249,6 +255,13 @@ const changedNodes = slice.nodes
   .filter((node) => CHANGED_STATUSES.includes(node.status))
 const ungraphed = slice.ungraphed ?? []
 const changedFiles = new Set([...changedNodes.map((node) => node.file), ...ungraphed.map((file) => file.file)])
+const largeSliceReasons = [
+  ...(slice.nodes.length > MANUAL_LAYOUT_THRESHOLD ? [`${slice.nodes.length} graph nodes`] : []),
+  ...(changedFiles.size > LARGE_FILE_WARNING_THRESHOLD ? [`${changedFiles.size} changed files`] : []),
+]
+const largeSliceWarningHtml = largeSliceReasons.length
+  ? `<div class="large-slice-warning" role="note"><strong>Large review slice · ${escapeHtml(largeSliceReasons.join(' · '))}</strong><span>All nodes and files remain included. Dense graphs can be harder to read; use search, Files, and the detail panel for line-level inspection.</span></div>`
+  : ''
 const fileStats = new Map<string, { added: number; removed: number }>()
 for (const node of changedNodes) fileStats.set(node.file, node.stats)
 for (const file of ungraphed) fileStats.set(file.file, file.stats)
@@ -522,7 +535,7 @@ function applyView() {
   zoomSel.value = String(pct);
 }
 function setScale(scale, cx, cy) {
-  const clamped = Math.min(4, Math.max(0.25, scale));
+  const clamped = Math.min(16, Math.max(0.125, scale));
   const w = BASE_VIEW.w / clamped, h = BASE_VIEW.h / clamped;
   const ax = cx === undefined ? view.x + view.w / 2 : cx;
   const ay = cy === undefined ? view.y + view.h / 2 : cy;
@@ -1045,6 +1058,12 @@ const html = `<!DOCTYPE html>
   .card-head h2{font-size:13.5px;font-weight:600}
   .card-head .sub{font-size:11px;color:var(--faint);margin-top:3px;font-family:var(--sans)}
   .card-head .grow{flex:1;min-width:0}
+  .large-slice-warning{
+    display:flex;align-items:center;gap:14px;padding:10px 16px;
+    border-top:1px solid rgba(229,176,75,.34);background:rgba(229,176,75,.08);
+    color:var(--dim);font-family:var(--sans);font-size:11.5px;line-height:1.4;
+  }
+  .large-slice-warning strong{color:var(--modified);font-family:var(--mono);font-size:10.5px;white-space:nowrap}
   .toolbar{display:flex;align-items:center;gap:7px;flex:none}
   .tbtn{
     all:unset;cursor:pointer;border:1px solid var(--grid);border-radius:7px;
@@ -1285,6 +1304,7 @@ const html = `<!DOCTYPE html>
     .center{grid-row:2;grid-column:2;overflow:visible}
     .rightpanel{grid-row:3;grid-column:1/3;border-left:none;border-top:1px solid var(--grid)}
     svg#canvas{min-height:380px}
+    .large-slice-warning{align-items:flex-start;flex-direction:column;gap:4px}
   }
 </style>
 </head>
@@ -1342,15 +1362,15 @@ const html = `<!DOCTYPE html>
           <button class="tbtn" id="fit-view">Fit view</button>
           <select id="zoom-level" aria-label="Zoom level">
             <option value="50">50%</option><option value="75">75%</option>
-            <option value="100" selected>100%</option>
-            <option value="150">150%</option><option value="200">200%</option>
+            <option value="100" selected>100%</option><option value="150">150%</option>
+            <option value="200">200%</option><option value="400">400%</option><option value="800">800%</option>
           </select>
           <button class="tbtn ico" id="zoom-out" aria-label="Zoom out">${icon('zoomout')}</button>
           <button class="tbtn ico" id="zoom-in" aria-label="Zoom in">${icon('zoomin')}</button>
         </div>
       </div>
-      <div class="canvas-wrap">
-        <svg id="canvas" viewBox="0 0 ${CANVAS.width} ${CANVAS.height}" role="img" aria-label="Dependency slice of ${escapeHtml(slice.generated.range)}">
+${largeSliceWarningHtml ? `      ${largeSliceWarningHtml}\n` : ''}      <div class="canvas-wrap">
+        <svg id="canvas" viewBox="0 0 ${CANVAS.width} ${CANVAS.height}" data-layout-mode="${graphLayout.mode}" data-canvas-width="${CANVAS.width}" data-canvas-height="${CANVAS.height}" role="img" aria-label="Dependency slice of ${escapeHtml(slice.generated.range)}">
           <defs>
             <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
               <circle cx="1.2" cy="1.2" r="1.2" fill="#1A2440"/>
@@ -1362,7 +1382,7 @@ const html = `<!DOCTYPE html>
               <path d="M0,0 L8,4 L0,8 z" fill="#E9E6DC"/>
             </marker>
           </defs>
-          <rect x="-2000" y="-2000" width="6000" height="6000" fill="url(#dots)"/>
+          <rect x="${-CANVAS.width}" y="${-CANVAS.height}" width="${CANVAS.width * 3}" height="${CANVAS.height * 3}" fill="url(#dots)"/>
           <g id="rings">
         ${ringsSvg}
           </g>
@@ -1486,5 +1506,6 @@ ${artifactScript}
 
 writeFileSync(values.out, html)
 console.error(
-  `render-slice: ${slice.nodes.length} nodes, ${slice.edges.length} edges, ${criteria.length} criteria, ${flags.length} flags → ${values.out}`,
+  `render-slice: ${slice.nodes.length} nodes, ${slice.edges.length} edges, ${criteria.length} criteria, ${flags.length} flags, ${graphLayout.mode} layout ${CANVAS.width}x${CANVAS.height} → ${values.out}` +
+    (largeSliceReasons.length ? `\nrender-slice: warning — large review slice (${largeSliceReasons.join(', ')}); dense graphs may be harder to read` : ''),
 )

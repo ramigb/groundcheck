@@ -158,6 +158,12 @@
   .card-head h2{font-size:13.5px;font-weight:600}
   .card-head .sub{font-size:11px;color:var(--faint);margin-top:3px;font-family:var(--sans)}
   .card-head .grow{flex:1;min-width:0}
+  .large-slice-warning{
+    display:flex;align-items:center;gap:14px;padding:10px 16px;
+    border-top:1px solid rgba(229,176,75,.34);background:rgba(229,176,75,.08);
+    color:var(--dim);font-family:var(--sans);font-size:11.5px;line-height:1.4;
+  }
+  .large-slice-warning strong{color:var(--modified);font-family:var(--mono);font-size:10.5px;white-space:nowrap}
   .toolbar{display:flex;align-items:center;gap:7px;flex:none}
   .tbtn{
     all:unset;cursor:pointer;border:1px solid var(--grid);border-radius:7px;
@@ -398,6 +404,7 @@
     .center{grid-row:2;grid-column:2;overflow:visible}
     .rightpanel{grid-row:3;grid-column:1/3;border-left:none;border-top:1px solid var(--grid)}
     svg#canvas{min-height:380px}
+    .large-slice-warning{align-items:flex-start;flex-direction:column;gap:4px}
   }
 </style>
 </head>
@@ -470,15 +477,15 @@
           <button class="tbtn" id="fit-view">Fit view</button>
           <select id="zoom-level" aria-label="Zoom level">
             <option value="50">50%</option><option value="75">75%</option>
-            <option value="100" selected>100%</option>
-            <option value="150">150%</option><option value="200">200%</option>
+            <option value="100" selected>100%</option><option value="150">150%</option>
+            <option value="200">200%</option><option value="400">400%</option><option value="800">800%</option>
           </select>
           <button class="tbtn ico" id="zoom-out" aria-label="Zoom out"><svg class="ic" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14M5 7h4"/></svg></button>
           <button class="tbtn ico" id="zoom-in" aria-label="Zoom in"><svg class="ic" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14M5 7h4M7 5v4"/></svg></button>
         </div>
       </div>
       <div class="canvas-wrap">
-        <svg id="canvas" viewBox="0 0 1180 620" role="img" aria-label="Dependency slice of main..fixture/wishlist">
+        <svg id="canvas" viewBox="0 0 1180 620" data-layout-mode="manual" data-canvas-width="1180" data-canvas-height="620" role="img" aria-label="Dependency slice of main..fixture/wishlist">
           <defs>
             <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
               <circle cx="1.2" cy="1.2" r="1.2" fill="#1A2440"/>
@@ -490,7 +497,7 @@
               <path d="M0,0 L8,4 L0,8 z" fill="#E9E6DC"/>
             </marker>
           </defs>
-          <rect x="-2000" y="-2000" width="6000" height="6000" fill="url(#dots)"/>
+          <rect x="-1180" y="-620" width="3540" height="1860" fill="url(#dots)"/>
           <g id="rings">
         <circle class="ring r1" cx="440" cy="300" r="78" stroke-width="1.4"></circle>
         <circle class="ring r2" cx="440" cy="300" r="122" stroke-width="1.4"></circle>
@@ -757,7 +764,7 @@
 <script type="application/json" id="gc-slice">{
   "groundcheck": "0.6.0",
   "generated": {
-    "at": "2026-07-27T08:39:41Z",
+    "at": "2026-07-27T09:53:14Z",
     "repo": "storefront",
     "range": "main..fixture/wishlist",
     "headSha": "f17c953",
@@ -1523,7 +1530,7 @@ function applyView() {
   zoomSel.value = String(pct);
 }
 function setScale(scale, cx, cy) {
-  const clamped = Math.min(4, Math.max(0.25, scale));
+  const clamped = Math.min(16, Math.max(0.125, scale));
   const w = BASE_VIEW.w / clamped, h = BASE_VIEW.h / clamped;
   const ax = cx === undefined ? view.x + view.w / 2 : cx;
   const ay = cy === undefined ? view.y + view.h / 2 : cy;

@@ -16,9 +16,9 @@ import { createRequire } from 'node:module'
 import * as nodePath from 'node:path'
 import { parseArgs } from 'node:util'
 import { Node, Project, SyntaxKind, type SourceFile } from 'ts-morph'
+import { MANUAL_LAYOUT_THRESHOLD } from './layout-slice.ts'
 
 const SLICE_VERSION = '0.6.0'
-const MAX_DRAWN_NODES_HINT = 20
 
 type Kind = 'component' | 'hook' | 'type' | 'token' | 'route' | 'module'
 type Status = 'added' | 'modified' | 'deleted' | 'blast' | 'context'
@@ -842,5 +842,7 @@ const slice = {
 writeFileSync(nodePath.resolve(values.out!), `${JSON.stringify(slice, null, 2)}\n`)
 console.error(
   `build-slice: ${slice.nodes.length} nodes, ${slice.ungraphed.length} ungraphed files, ${slice.edges.length} edges, ${slice.hidden.count} hidden${slice.excluded.count ? `, ${slice.excluded.count} changed files excluded` : ''} → ${values.out}` +
-    (slice.nodes.length > MAX_DRAWN_NODES_HINT ? `\nbuild-slice: ${slice.nodes.length} nodes exceeds the ${MAX_DRAWN_NODES_HINT}-node render cap; re-run with --collapse dir` : ''),
+    (slice.nodes.length > MANUAL_LAYOUT_THRESHOLD
+      ? `\nbuild-slice: warning — ${slice.nodes.length} nodes will use the renderer's automatic expanded layout; optionally re-run with --collapse dir for a directory-level summary`
+      : ''),
 )

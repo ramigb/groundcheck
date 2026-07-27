@@ -1,7 +1,7 @@
-# DESIGN_CONTRACT v0.3.0
+# DESIGN_CONTRACT v0.4.0
 
-The visual system is frozen from `assets/shell-mock.png`; v0.3.0 extends its
-Files and Diff behavior without changing that visual language. The contract
+The visual system is frozen from `assets/shell-mock.png`; v0.4.0 extends its
+large-slice behavior without changing that visual language. The contract
 exists so that after ten runs the reviewer's eyes know where to look before
 consciously reading anything. Agents never restyle ad hoc; changes require a
 version bump and human sign-off. Renderer implements this; validator spot-checks
@@ -10,6 +10,17 @@ it.
 `assets/reference-mock.html` is the **superseded** v0.1.0 golden. It stays in the
 repo for reference and for the AGENT_LOOP.md M2 gate's history, but it no longer
 describes the artifact. Where the two disagree, the PNG wins.
+
+## Delta from v0.3.0
+
+1. The 20-node rejection is removed. Slices above 20 nodes use a deterministic
+   automatic layout on an expanded canvas; every graph node and edge remains in
+   the artifact.
+2. Small slices retain model-authored layout and the original `1180 x 620`
+   canvas, preserving the established visual narrative.
+3. Large slices, or slices above 100 changed files, render an amber density
+   warning. `--collapse dir` remains available as an optional summary rather
+   than a prerequisite for rendering.
 
 ## Delta from v0.2.0
 
@@ -187,7 +198,7 @@ ignore that corner.
 Panel head: title `Dependency Graph`, subtitle
 `Visualize how changes in this PR impact your codebase`. Toolbar, right-aligned:
 `Fit view`, a zoom control, and zoom-out / zoom-in icon buttons. The zoom control
-is a native `<select>` over presets (50 / 75 / 100 / 150 / 200%) that also reads
+is a native `<select>` over presets (50 / 75 / 100 / 150 / 200 / 400 / 800%) that also reads
 back the current scale after a wheel or button zoom; native because a custom
 dropdown would be keyboard and screen-reader work for no gain. Zoom and pan are
 `viewBox` transforms over the placed coordinates; they never move a node relative
@@ -197,7 +208,10 @@ to another.
 `annotations.layout` and are numerically validated; a client-side relayout would
 render positions the validator never saw.)
 
-Canvas viewBox `1180 x 620`, dotted grid pattern, `ink` background.
+Small-slice canvas viewBox `1180 x 620`; large slices expand deterministically
+to fit their computed grid. Both use the dotted-grid `ink` background. `Fit
+view` always returns to the complete world canvas, and zoom supports the added
+400% and 800% presets needed to inspect a dense fitted overview.
 
 ### Node anatomy
 
@@ -351,24 +365,37 @@ cards, the graph's computed geometry, the Files view and every diff block are
 default register and carry no violet. A reader must be able to tell at a glance
 which voice is speaking.
 
-## Layout (model-placed, validator-enforced)
+## Layout (hybrid, validator-enforced)
 
-Unchanged from v0.1.0. Canvas viewBox `1180 x 620`. Geometry rules (hard, checked
-numerically):
+For slices with 20 or fewer nodes, layout remains model-authored and the canvas
+viewBox remains `1180 x 620`. Geometry rules are hard and checked numerically:
 
 - Every node has exactly one layout entry; all rects inside the viewBox with
   >= 14px margin.
 - No node-rect overlap; minimum edge-to-edge gap 24px.
 - Epicenter center within x in [380, 500], y in [260, 340]. Multiple epicenters:
   place the highest-degree one there, others >= 200px apart.
-- <= 20 nodes per slice. Beyond that, `build-slice` must be re-run with
-  `--collapse dir`; the renderer refuses > 20.
 
 Narrative rules (soft, model judgment): blast nodes fan on the far side of the
 epicenter from the changes, so cause and consequence read as regions; additions
 cluster near the component that renders them; orphans sit peripheral, visibly
 apart from the feature cluster; edge crossings minimized last, after the regions
 read cleanly.
+
+For slices above 20 nodes, `annotations.layout` is ignored and may be omitted.
+The renderer and validator independently run the same deterministic placement:
+
+- canvas dimensions expand with node count and have no node-count rejection;
+- fixed node geometry and at least 24px edge-to-edge separation are preserved;
+- epicenters, their direct neighbors, changed nodes, then remaining nodes are
+  ordered toward the center, with degree and stable node id as tie-breakers;
+- every rendered position and the expanded canvas dimensions are recomputed by
+  the validator, so automatic placement does not weaken artifact integrity;
+- an amber warning states that all content is included but density can make the
+  graph harder to read, and points reviewers to search, Files, and detail views.
+
+`--collapse dir` is an optional reviewer choice when directory-level topology is
+more useful. It is never required merely to make a slice render.
 
 ## Signature elements (never cut)
 
