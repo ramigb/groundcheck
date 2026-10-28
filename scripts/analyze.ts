@@ -24,6 +24,9 @@ function projectFor(snapshot: Snapshot, revision: 'before' | 'after', config?: s
     } catch (error) { scope.limitations.push(`Cannot load config: ${String(error).replaceAll('/repo/', '')}`) }
   } else scope.limitations.push('No tsconfig.json or jsconfig.json: reference analysis uses default compiler options.')
   if (scope.mode === 'syntax-only') {
+    // A config that includes no files still replaces the default options; without
+    // allowJs the language service drops .js files and reference lookup throws.
+    if (!project.getCompilerOptions().allowJs) project.compilerOptions.set({ allowJs: true })
     for (const [name, entry] of snapshot.entries) if (isCode(name) && entry.content) project.addSourceFileAtPath(`/repo/${name}`)
   }
   scope.includedFiles = project.getSourceFiles().map(f => f.getFilePath().slice(6)).sort(compare)
@@ -50,7 +53,7 @@ function projectFor(snapshot: Snapshot, revision: 'before' | 'after', config?: s
   return { project, scope }
 }
 
-function collectReferences(project: Project, changes: Change[], revision: 'before' | 'after'): Reference[] {
+function collectReferences(project: Project, changes: Change[], revision: 'before' | 'after', scope: Scope): Reference[] {
   const references: Reference[] = []
   const seen = new Set<string>()
   for (const change of changes) {
@@ -65,7 +68,13 @@ function collectReferences(project: Project, changes: Change[], revision: 'befor
     })
     for (const declaration of declarations) {
       if (!Node.isReferenceFindable(declaration)) continue
-      for (const ref of declaration.findReferencesAsNodes()) {
+      // One failed lookup must not abort the review; disclose it as a scope limitation.
+      let found: Node[]
+      try { found = declaration.findReferencesAsNodes() } catch (error) {
+        scope.limitations.push(`${change.file}:${declaration.getStartLineNumber()}: reference lookup failed: ${String(error).replaceAll('/repo/', '')}`)
+        continue
+      }
+      for (const ref of found) {
         const refFile = ref.getSourceFile().getFilePath().slice(6)
         const line = ref.getStartLineNumber()
         if (refFile === change.file && line >= logic.source.start && line <= logic.source.end) continue
@@ -82,6 +91,7 @@ function collectReferences(project: Project, changes: Change[], revision: 'befor
       }
     }
   }
+  scope.limitations = [...new Set(scope.limitations)].sort(compare)
   return references.sort((a, b) => compare(a.changeId, b.changeId) || compare(a.revision, b.revision) || compare(a.source.file, b.source.file) || a.source.start - b.source.start || compare(a.relationship, b.relationship))
 }
 
@@ -128,7 +138,7 @@ export function analyze(repo: string, range: string, options: { worktree?: boole
   const baseProject = projectFor(before, 'before', options.tsconfig)
   const headProject = projectFor(after, 'after', options.tsconfig)
   const scopes = [baseProject.scope, headProject.scope]
-  const references = [...collectReferences(baseProject.project, changes, 'before'), ...collectReferences(headProject.project, changes, 'after')]
+  const references = [...collectReferences(baseProject.project, changes, 'before', baseProject.scope), ...collectReferences(headProject.project, changes, 'after', headProject.scope)]
   const treeHash = (snapshot: Snapshot) => hash(JSON.stringify([...snapshot.entries].sort(([a], [b]) => compare(a, b)).map(([name, entry]) => [name, entry.mode, entry.oid])))
   const input: Slice['input'] = patched ? { kind: 'patch', patch: patchText } : { kind: options.worktree ? 'worktree' : 'git-range' }
   const data = { input, trees: { before: treeHash(before), after: treeHash(after) }, files, changes, references, scopes }

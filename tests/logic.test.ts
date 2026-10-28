@@ -86,3 +86,21 @@ test('operator observations come from AST nodes, not comments and strings', () =
   assert.match(actual.patterns[0], /right expression is now used only for null or undefined/)
   assert.deepEqual(actual.patterns.slice(1), ['|| occurrences: 1 → 0', '?? occurrences: 0 → 1'])
 })
+test('plain array/object literals and typeof translate; spread, holes, computed keys, methods and __proto__ stay gaps', () => {
+  assert.equal(translate('const xs = [];')[0].coverage, 'translated')
+  assert.match(text('const o = { a: 1, b, c: f(x) };'), /OBJECT \{ a: 1, b, c: CALL f WITH \(x\) \}/)
+  assert.match(text('const xs = [a, 2];'), /ARRAY \[a, 2\]/)
+  assert.match(text('const t = typeof x;'), /TYPE NAME STRING OF x/)
+  for (const code of ['const xs = [...a];', 'const xs = [, a];', 'const o = { ...a };', 'const o = { [k]: 1 };', 'const o = { m() {} };', 'const o = { get v() { return 1 } };', 'const o = { __proto__: p };', 'const o = { "__proto__": p };']) {
+    assert.notEqual(translate(code)[0].coverage, 'translated', code)
+  }
+})
+test('statements without a declared name get a source label but keep kind-based IDs', () => {
+  const [assign, call, branch] = translate('config.cacheVersion = hash();\nregister(app);\nif (ready) start();\n')
+  assert.equal(assign.name, 'config.cacheVersion =')
+  assert.equal(call.name, 'register()')
+  assert.equal(branch.name, 'if (ready) start();')
+  assert.deepEqual([...extractLogic('a.ts', 'register(app);').keys()], ['ExpressionStatement:ExpressionStatement:0'])
+  assert.equal(translate(`run(${'x'.repeat(80)});`)[0].name, 'run()')
+  assert.ok(translate(`if (${'x'.repeat(80)}) go();`)[0].name.length <= 60)
+})

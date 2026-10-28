@@ -48,6 +48,17 @@ export function extractLogic(file: string, code: string): Map<string, Logic> {
     if (ts.isConditionalExpression(n)) return `(IF truthy(${ex(n.condition)}) THEN ${ex(n.whenTrue)} ELSE ${ex(n.whenFalse)}; evaluate only the selected branch)`
     if (ts.isAsExpression(n) || ts.isTypeAssertionExpression(n) || ts.isSatisfiesExpression(n) || ts.isNonNullExpression(n)) return `${ex(n.expression)} [type-only assertion; no runtime validation]`
     if (ts.isArrowFunction(n) || ts.isFunctionExpression(n)) return gap(n, 'Nested function expression retained verbatim; its body is not executed at definition')
+    // Literals are translated only without spread, holes, computed keys, methods,
+    // accessors or __proto__; elements and values are evaluated left to right.
+    if (ts.isArrayLiteralExpression(n) && n.elements.every(e => !ts.isSpreadElement(e) && !ts.isOmittedExpression(e))) return `ARRAY [${n.elements.map(ex).join(', ')}]`
+    const plainProperty = (p: ts.ObjectLiteralElementLike) => {
+      if (!ts.isPropertyAssignment(p) && !(ts.isShorthandPropertyAssignment(p) && !p.objectAssignmentInitializer)) return false
+      return !ts.isComputedPropertyName(p.name) && raw(p.name).replace(/^["']|["']$/g, '') !== '__proto__'
+    }
+    if (ts.isObjectLiteralExpression(n) && n.properties.every(plainProperty)) {
+      return `OBJECT {${n.properties.map(p => ts.isPropertyAssignment(p) ? ` ${raw(p.name)}: ${ex(p.initializer)}` : ` ${raw((p as ts.ShorthandPropertyAssignment).name)}`).join(',')}${n.properties.length ? ' ' : ''}}`
+    }
+    if (ts.isTypeOfExpression(n)) return `(TYPE NAME STRING OF ${ex(n.expression)})`
     return gap(n)
   }
   const body = (n: ts.Statement): Step[] => ts.isBlock(n) ? n.statements.flatMap(st) : st(n)
@@ -87,11 +98,21 @@ export function extractLogic(file: string, code: string): Map<string, Logic> {
     result.set('file', { name: file, kind: 'unparsed', source, code, steps: [], gaps: parseErrors.map(d => ({ reason: ts.flattenDiagnosticMessageText(d.messageText, '\n'), source, code })), coverage: 'source-only' })
     return result
   }
+  // Display label for statements without a declared name. IDs keep the kind so
+  // before/after matching and existing change IDs do not move.
+  const short = (text: string) => { const line = text.replace(/\s+/g, ' ').trim(); return line.length > 60 ? `${line.slice(0, 57)}...` : line }
+  const label = (n: ts.Statement) => {
+    const e = ts.isExpressionStatement(n) ? n.expression : undefined
+    if (e && ts.isBinaryExpression(e) && e.operatorToken.kind === ts.SyntaxKind.EqualsToken) return `${short(raw(e.left))} =`
+    if (e && ts.isCallExpression(e)) return `${short(raw(e.expression))}()`
+    return short(raw(n))
+  }
   for (const n of sf.statements) {
     gaps = []
-    const name = ts.isVariableStatement(n) ? n.declarationList.declarations.map(d => raw(d.name)).join(', ') : 'name' in n && n.name ? raw(n.name as ts.Node) : ts.isImportDeclaration(n) ? raw(n.moduleSpecifier) : ts.SyntaxKind[n.kind]
+    const keyName = ts.isVariableStatement(n) ? n.declarationList.declarations.map(d => raw(d.name)).join(', ') : 'name' in n && n.name ? raw(n.name as ts.Node) : ts.isImportDeclaration(n) ? raw(n.moduleSpecifier) : ts.SyntaxKind[n.kind]
     const kind = ts.isVariableStatement(n) ? 'VariableStatement' : ts.SyntaxKind[n.kind]
-    const key = `${kind}:${name}`
+    const name = keyName === ts.SyntaxKind[n.kind] ? label(n) : keyName
+    const key = `${kind}:${keyName}`
     const ordinal = occurrences.get(key) ?? 0
     occurrences.set(key, ordinal + 1)
     const steps = st(n)

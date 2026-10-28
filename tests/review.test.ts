@@ -286,3 +286,18 @@ test('Git-range metadata accounts for symlinks and gitlinks without following th
     assert.throws(() => analyze(repo, `${metadata}..`, { worktree: true }), /submodule changes require a Git range/)
   } finally { git('reset', '--hard', head) }
 })
+
+test('a config that includes no files still gives JavaScript reference analysis instead of crashing', () => {
+  const emptyRepo = path.join(work, 'empty-include'); mkdirSync(emptyRepo)
+  const run = (...args: string[]) => execFileSync('git', args, { cwd: emptyRepo, encoding: 'utf8' }).trim()
+  run('init', '-q', '-b', 'main'); run('config', 'user.name', 'Fixture'); run('config', 'user.email', 'fixture@example.invalid')
+  writeFileSync(path.join(emptyRepo, 'tsconfig.json'), JSON.stringify({ include: [] }))
+  writeFileSync(path.join(emptyRepo, 'x.js'), 'const a = 1\nmodule.exports = a\n')
+  run('add', '-A'); run('commit', '-qm', 'base'); const emptyBase = run('rev-parse', 'HEAD')
+  writeFileSync(path.join(emptyRepo, 'x.js'), 'const a = 2\nmodule.exports = a\n')
+  run('commit', '-qam', 'head')
+  const result = analyze(emptyRepo, `${emptyBase}..HEAD`)
+  checkSlice(result)
+  assert.ok(result.scopes.every(scope => scope.mode === 'syntax-only' && scope.includedFiles.includes('x.js')))
+  assert.ok(result.references.some(ref => ref.revision === 'after' && ref.source.file === 'x.js' && ref.source.start === 2))
+})
